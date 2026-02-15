@@ -1,0 +1,25 @@
+type Order @entity(immutable: false) {
+  id: ID!
+
+  buyer: Bytes!
+  seller: Bytes!
+  carrier: Bytes!
+  inspector: Bytes!
+  bank: Bytes!
+  arbiter: Bytes!
+
+  token: Bytes!
+  price: BigInt!
+  advanceBps: Int!
+
+  stage: Int!
+  createdAt: BigInt!
+  createdTx: Bytes!
+}
+
+type OrderParticipant @entity(immutable: true) {
+  id: ID!
+  order: Order!
+  participant: Bytes!
+  role: String!
+}
