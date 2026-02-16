@@ -23,6 +23,8 @@ import {
   X,
 } from "lucide-react";
 
+import styles from "./NewOrderPage.module.css";
+
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { WEB3_CONFIG } from "@/lib/web3/config";
 import { toBytes32Label } from "@/lib/web3/bytes";
@@ -142,105 +144,61 @@ function bpsToPercentString(bpsStr) {
   return Number.isInteger(p) ? String(p) : String(p);
 }
 
-/* ---------- UI Primitives ---------- */
-
-function Badge({ kind = "neutral", children }) {
-  const cls =
-    kind === "good"
-      ? "bg-green-50 text-green-800 ring-green-200"
-      : kind === "bad"
-        ? "bg-red-50 text-red-800 ring-red-200"
-        : "bg-white text-gray-700 ring-black/10";
-
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
-        cls
-      )}
-    >
-      {children}
-    </span>
-  );
-}
+/* ---------- UI Primitives (NO Tailwind) ---------- */
 
 function PageShell({ children }) {
-  return (
-    <div className="min-h-screen bg-[radial-gradient(900px_450px_at_15%_0%,rgba(0,0,0,0.06),transparent_55%),radial-gradient(900px_450px_at_90%_10%,rgba(0,0,0,0.05),transparent_55%),linear-gradient(to_bottom,#fafafa,#ffffff)]">
-      {children}
-    </div>
-  );
+  return <div className={styles.page}>{children}</div>;
 }
 
 function Container({ children }) {
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12 pb-24">
-      {children}
+    <div className={styles.container}>
+      <div className={styles.content}>{children}</div>
     </div>
   );
 }
 
-function Card({ children, className }) {
-  return (
-    <div
-      className={cx(
-        "rounded-[24px] bg-white/80 backdrop-blur",
-        "shadow-[0_1px_0_rgba(17,24,39,0.05),0_18px_60px_rgba(17,24,39,0.10)]",
-        "ring-1 ring-black/5 overflow-hidden",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
+/**
+ * fullBleed => 100vw card width (full screen)
+ */
+function Card({ children, className, fullBleed = false }) {
+  if (fullBleed) {
+    return (
+      <div className={styles.fullBleed}>
+        <div className={styles.fullBleedInner}>
+          <div className={cx(styles.card, className)}>{children}</div>
+        </div>
+      </div>
+    );
+  }
+  return <div className={cx(styles.card, className)}>{children}</div>;
 }
 
 function CardHeader({ title, subtitle, right }) {
   return (
-    <div className="px-6 sm:px-7 pt-6 sm:pt-7">
-      <div className="flex items-start justify-between gap-5">
-        <div className="min-w-0">
-          <div className="text-[15px] font-semibold text-gray-900 truncate">
-            {title}
-          </div>
-          {subtitle ? (
-            <div className="mt-1 text-sm text-gray-600 leading-relaxed">
-              {subtitle}
-            </div>
-          ) : null}
+    <div className={styles.cardHeader}>
+      <div className={styles.cardHeaderRow}>
+        <div style={{ minWidth: 0 }}>
+          <div className={styles.cardTitle}>{title}</div>
+          {subtitle ? <div className={styles.cardSubtitle}>{subtitle}</div> : null}
         </div>
-        {right ? <div className="shrink-0">{right}</div> : null}
+        {right ? <div style={{ flexShrink: 0 }}>{right}</div> : null}
       </div>
     </div>
   );
 }
 
 function CardBody({ children }) {
-  return (
-    <div className="px-6 sm:px-7 pb-10 sm:pb-12 pt-5 sm:pt-6">
-      {children}
-    </div>
-  );
+  return <div className={styles.cardBody}>{children}</div>;
 }
 
 function SectionCard({ title, subtitle, children, className }) {
   return (
-    <div
-      className={cx(
-        "rounded-[20px] bg-white/70 backdrop-blur",
-        "ring-1 ring-black/10 shadow-[0_1px_0_rgba(17,24,39,0.05)]",
-        "p-5 sm:p-6",
-        className
-      )}
-    >
+    <div className={cx(styles.section, className)}>
       {title || subtitle ? (
-        <div className="mb-4">
-          {title ? (
-            <div className="text-sm font-semibold text-gray-900">{title}</div>
-          ) : null}
-          {subtitle ? (
-            <div className="mt-1 text-xs text-gray-600">{subtitle}</div>
-          ) : null}
+        <div style={{ marginBottom: 12 }}>
+          {title ? <div className={styles.sectionTitle}>{title}</div> : null}
+          {subtitle ? <div className={styles.sectionSubtitle}>{subtitle}</div> : null}
         </div>
       ) : null}
       {children}
@@ -249,30 +207,29 @@ function SectionCard({ title, subtitle, children, className }) {
 }
 
 function InlineBanner({ kind = "info", title, children }) {
-  const base = "rounded-2xl px-5 py-4 text-sm leading-relaxed ring-1";
-  const styles =
-    kind === "error"
-      ? "bg-red-50/70 text-red-900 ring-red-200"
-      : kind === "success"
-        ? "bg-green-50/70 text-green-900 ring-green-200"
-        : "bg-white/70 text-gray-900 ring-black/10";
-
   const icon =
     kind === "error" ? (
-      <AlertTriangle className="h-4 w-4" />
+      <AlertTriangle size={18} />
     ) : kind === "success" ? (
-      <CheckCircle2 className="h-4 w-4" />
+      <CheckCircle2 size={18} />
     ) : (
-      <Sparkles className="h-4 w-4" />
+      <Sparkles size={18} />
     );
 
+  const kindCls =
+    kind === "error"
+      ? styles.bannerError
+      : kind === "success"
+      ? styles.bannerSuccess
+      : styles.bannerInfo;
+
   return (
-    <div className={cx(base, styles)}>
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 shrink-0">{icon}</div>
-        <div className="min-w-0">
-          {title ? <div className="font-semibold">{title}</div> : null}
-          <div className={title ? "mt-1" : ""}>{children}</div>
+    <div className={cx(styles.banner, kindCls)}>
+      <div className={styles.bannerRow}>
+        <div style={{ marginTop: 2, flexShrink: 0 }}>{icon}</div>
+        <div style={{ minWidth: 0 }}>
+          {title ? <div className={styles.bannerTitle}>{title}</div> : null}
+          <div className={styles.bannerText}>{children}</div>
         </div>
       </div>
     </div>
@@ -281,20 +238,16 @@ function InlineBanner({ kind = "info", title, children }) {
 
 function Field({ label, hint, error, children, rightSlot }) {
   return (
-    <div className="min-w-0">
-      <div className="flex items-end justify-between gap-3">
-        <label className="text-xs font-medium text-gray-700 truncate">
-          {label}
-        </label>
-        <div className="flex items-center gap-2 min-w-0">
-          {hint ? (
-            <span className="text-xs text-gray-500 truncate">{hint}</span>
-          ) : null}
-          {rightSlot ? <span className="shrink-0">{rightSlot}</span> : null}
+    <div style={{ minWidth: 0 }}>
+      <div className={styles.fieldTop}>
+        <label className={styles.label}>{label}</label>
+        <div className={styles.hintRow}>
+          {hint ? <span className={styles.hint}>{hint}</span> : null}
+          {rightSlot ? <span style={{ flexShrink: 0 }}>{rightSlot}</span> : null}
         </div>
       </div>
       {children}
-      {error ? <div className="mt-2 text-xs text-red-600">{error}</div> : null}
+      {error ? <div className={styles.errorText}>{error}</div> : null}
     </div>
   );
 }
@@ -310,14 +263,7 @@ function Input({
 }) {
   return (
     <input
-      className={cx(
-        "mt-2 w-full rounded-2xl bg-white px-4 py-3 text-sm outline-none transition",
-        "border shadow-[0_1px_0_rgba(17,24,39,0.05)]",
-        error
-          ? "border-red-300 focus:border-red-400"
-          : "border-gray-200 focus:border-gray-300",
-        mono && "font-mono text-[13px]"
-      )}
+      className={cx(styles.input, error && styles.inputError, mono && styles.inputMono)}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
@@ -333,15 +279,14 @@ function ButtonPrimary({ children, onClick, disabled, loading, className }) {
       onClick={onClick}
       disabled={disabled || loading}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-medium",
-        "bg-black text-white shadow-[0_12px_28px_rgba(0,0,0,0.18)]",
-        "transition hover:opacity-90 active:scale-[0.99] whitespace-nowrap",
-        (disabled || loading) && "pointer-events-none opacity-60 shadow-none",
+        styles.btn,
+        styles.btnPrimary,
+        (disabled || loading) && styles.btnDisabled,
         className
       )}
       type="button"
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      {loading ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : null}
       {children}
     </button>
   );
@@ -352,13 +297,7 @@ function ButtonSecondary({ children, onClick, disabled, className }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-medium",
-        "bg-white text-gray-900 ring-1 ring-black/10 shadow-[0_1px_0_rgba(17,24,39,0.05)]",
-        "transition hover:bg-gray-50 active:scale-[0.99] whitespace-nowrap",
-        disabled && "pointer-events-none opacity-60 shadow-none",
-        className
-      )}
+      className={cx(styles.btn, styles.btnSecondary, disabled && styles.btnDisabled, className)}
       type="button"
     >
       {children}
@@ -367,17 +306,12 @@ function ButtonSecondary({ children, onClick, disabled, className }) {
 }
 
 function Chip({ kind = "neutral", children }) {
-  const cls =
-    kind === "good"
-      ? "bg-green-50 text-green-800 ring-green-200"
-      : kind === "bad"
-        ? "bg-red-50 text-red-800 ring-red-200"
-        : "bg-white text-gray-900 ring-black/10";
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ring-1",
-        cls
+        styles.chip,
+        kind === "good" ? styles.chipGood : "",
+        kind === "bad" ? styles.chipBad : ""
       )}
     >
       {children}
@@ -389,7 +323,6 @@ function Chip({ kind = "neutral", children }) {
 
 function DeadlineField({ label = "Deadline", value, onChange }) {
   const inputRef = useRef(null);
-
   const pretty = formatUnix(value);
   const hasDate = !!pretty;
 
@@ -405,94 +338,99 @@ function DeadlineField({ label = "Deadline", value, onChange }) {
   }
 
   return (
-    <div className="w-full min-w-0">
-      <div className="flex items-end justify-between gap-3">
-        <div className="text-xs font-medium text-gray-700 truncate">
-          {label}
-        </div>
+    <div style={{ width: "100%", minWidth: 0 }}>
+      <div className={styles.fieldTop}>
+        <div className={styles.label}>{label}</div>
       </div>
 
-      <div
-        className={cx(
-          "mt-2 w-full min-w-0 box-border",
-          "rounded-2xl border border-gray-200 bg-white",
-          "shadow-[0_1px_0_rgba(17,24,39,0.05)]",
-          "px-3 py-2"
-        )}
-      >
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={openPicker}
-            className={cx(
-              "w-full sm:w-auto",
-              "inline-flex items-center justify-center gap-2",
-              "rounded-xl border border-gray-200 bg-white",
-              "px-3 py-2 text-sm font-medium text-gray-900",
-              "hover:bg-gray-50 transition",
-              "min-h-[36px]"
-            )}
-            title="Pick date"
-          >
-            <Calendar className="h-4 w-4 text-gray-700" />
-            {hasDate ? (
-              <span className="max-w-[240px] truncate">{pretty}</span>
-            ) : null}
-          </button>
-
-          {hasDate ? (
+      <div style={{ marginTop: 10, position: "relative" }}>
+        <div
+          style={{
+            borderRadius: 16,
+            border: "1px solid rgba(2,6,23,0.12)",
+            background: "rgba(255,255,255,0.92)",
+            padding: 10,
+            boxShadow: "0 1px 0 rgba(2,6,23,0.05)",
+          }}
+        >
+          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
             <button
               type="button"
-              onClick={() => onChange("0")}
-              className={cx(
-                "inline-flex items-center justify-center",
-                "rounded-xl border border-gray-200 bg-white",
-                "h-9 w-9 shrink-0",
-                "hover:bg-gray-50 transition"
-              )}
-              title="Clear"
+              onClick={openPicker}
+              className={cx(styles.btn, styles.btnSecondary)}
+              style={{ padding: "10px 14px", borderRadius: 14, minHeight: 40, width: "100%", justifyContent: "center" }}
+              title="Pick date"
             >
-              <X className="h-4 w-4 text-gray-700" />
+              <Calendar size={18} />
+              {hasDate ? (
+                <span style={{ maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {pretty}
+                </span>
+              ) : (
+                <span style={{ opacity: 0.7 }}>Pick date</span>
+              )}
             </button>
-          ) : null}
 
-          <input
-            ref={inputRef}
-            type="datetime-local"
-            value={toLocalDatetimeInputValue(value)}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!v) {
-                onChange("0");
-                return;
-              }
-              onChange(fromLocalDatetimeInputValue(v));
-            }}
-            style={{
-              position: "absolute",
-              width: 1,
-              height: 1,
-              opacity: 0,
-              pointerEvents: "none",
-            }}
-            tabIndex={-1}
-            aria-hidden="true"
-          />
+            {hasDate ? (
+              <button
+                type="button"
+                onClick={() => onChange("0")}
+                className={cx(styles.btn, styles.btnSecondary)}
+                style={{ width: 44, height: 44, padding: 0, borderRadius: 14, flexShrink: 0 }}
+                title="Clear"
+              >
+                <X size={18} />
+              </button>
+            ) : null}
+
+            <input
+              ref={inputRef}
+              type="datetime-local"
+              value={toLocalDatetimeInputValue(value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) {
+                  onChange("0");
+                  return;
+                }
+                onChange(fromLocalDatetimeInputValue(v));
+              }}
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                opacity: 0,
+                pointerEvents: "none",
+              }}
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Stat ---------- */
+/* ---------- MiniStat ---------- */
 
 function MiniStat({ label, value, copyable }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className="rounded-2xl bg-white ring-1 ring-black/10 px-5 py-4 overflow-hidden">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs font-medium text-gray-500">{label}</div>
+    <div
+      style={{
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.80)",
+        border: "1px solid rgba(2,6,23,0.10)",
+        boxShadow: "0 1px 0 rgba(2,6,23,0.05)",
+        padding: "14px 16px",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(2,6,23,0.55)" }}>{label}</div>
+
         {copyable && value && value !== "—" ? (
           <button
             type="button"
@@ -503,24 +441,25 @@ function MiniStat({ label, value, copyable }) {
                 setTimeout(() => setCopied(false), 900);
               }
             }}
-            className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs ring-1 ring-black/10 hover:bg-gray-50 transition"
+            className={cx(styles.btn, styles.btnSecondary)}
+            style={{ padding: "8px 10px", borderRadius: 999, fontSize: 12, gap: 8 }}
             title="Copy"
           >
-            {copied ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
+            {copied ? <Check size={16} /> : <Copy size={16} />}
             {copied ? "Copied" : "Copy"}
           </button>
         ) : null}
       </div>
 
       <div
-        className={cx(
-          "mt-1 text-sm font-semibold text-gray-900 break-all",
-          copyable && "font-mono text-[13px]"
-        )}
+        style={{
+          marginTop: 8,
+          fontSize: 13.5,
+          fontWeight: 900,
+          color: "rgba(2,6,23,0.92)",
+          wordBreak: "break-all",
+          fontFamily: copyable ? "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" : undefined,
+        }}
         title={copyable ? value : undefined}
       >
         {copyable ? truncateMiddle(value || "—") : value || "—"}
@@ -532,40 +471,13 @@ function MiniStat({ label, value, copyable }) {
 /* ---------- Stepper ---------- */
 
 function StepPill({ state, idx, label, onClick }) {
-  const dot =
-    state === "done"
-      ? "bg-black text-white"
-      : state === "active"
-        ? "bg-black text-white"
-        : "bg-white text-gray-700 ring-1 ring-black/10";
-
-  const text =
-    state === "active"
-      ? "text-gray-900"
-      : state === "done"
-        ? "text-gray-900"
-        : "text-gray-600";
-
+  const active = state === "active" || state === "done";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cx(
-        "group inline-flex items-center gap-3 rounded-2xl px-3 py-2 transition select-none",
-        "hover:bg-white/70"
-      )}
-    >
-      <span
-        className={cx(
-          "inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition",
-          dot
-        )}
-      >
-        {state === "done" ? <Check className="h-5 w-5" /> : idx}
+    <button type="button" onClick={onClick} className={styles.stepPill}>
+      <span className={cx(styles.stepDot, active && styles.stepDotActive)}>
+        {state === "done" ? "✓" : idx}
       </span>
-      <span className={cx("text-sm font-medium whitespace-nowrap", text)}>
-        {label}
-      </span>
+      <span className={cx(styles.stepLabel, active && styles.stepLabelActive)}>{label}</span>
     </button>
   );
 }
@@ -574,32 +486,27 @@ function WizardTop({ step, setStep, steps }) {
   const pct = ((step - 1) / (steps.length - 1)) * 100;
 
   return (
-    <div className="mb-8 sm:mb-10">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-sm text-gray-500">
-            <Sparkles className="h-4 w-4" />
+    <div className={styles.wizardTop}>
+      <div className={styles.wizardTopRow}>
+        <div className={styles.wTitle}>
+          <div className={styles.kicker}>
+            <Sparkles size={18} />
             SupplyGuarantee • Wizard
           </div>
-          <div className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            New Order
-          </div>
-          <div className="mt-2 text-sm text-gray-600 max-w-2xl leading-relaxed">
-            Step-by-step flow: enter details, configure milestones, review, then
-            fund the escrow.
+          <div className={styles.headline}>New Order</div>
+          <div className={styles.lead}>
+            Step-by-step flow: enter details, configure milestones, review, then fund the escrow.
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-3">
-          <span className="text-xs font-medium text-gray-600">Progress</span>
-          <span className="rounded-full bg-white ring-1 ring-black/10 px-3 py-1.5 text-xs font-semibold text-gray-900">
-            {Math.round(pct)}%
-          </span>
+        <div className={styles.progressPill}>
+          <span className={styles.progressLabel}>Progress</span>
+          <span className={styles.progressValue}>{Math.round(pct)}%</span>
         </div>
       </div>
 
-      <div className="mt-6 rounded-[20px] bg-white/60 ring-1 ring-black/10 p-4 backdrop-blur">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className={styles.stepperWrap}>
+        <div className={styles.stepsRow}>
           {steps.map((s) => {
             const state = step > s.k ? "done" : step === s.k ? "active" : "todo";
             return (
@@ -614,21 +521,14 @@ function WizardTop({ step, setStep, steps }) {
           })}
         </div>
 
-        <div className="mt-5">
-          <div className="relative h-3 rounded-full bg-black/10 overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-black to-gray-700 transition-all"
-              style={{ width: `${pct}%` }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white ring-2 ring-black shadow-[0_8px_20px_rgba(0,0,0,0.20)] transition-all"
-              style={{ left: `calc(${pct}% - 10px)` }}
-            />
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-            <span>{steps[0].label}</span>
-            <span>{steps[steps.length - 1].label}</span>
-          </div>
+        <div className={styles.bar}>
+          <div className={styles.barFill} style={{ width: `${pct}%` }} />
+          <div className={styles.knob} style={{ left: `${pct}%` }} />
+        </div>
+
+        <div className={styles.barMeta}>
+          <span>{steps[0].label}</span>
+          <span>{steps[steps.length - 1].label}</span>
         </div>
       </div>
     </div>
@@ -641,8 +541,7 @@ export default function NewOrderPage() {
   const router = useRouter();
   const redirectTimerRef = useRef(null);
 
-  const { account, isCorrectChain, connect, switchToTargetChain, contracts } =
-    useWeb3();
+  const { account, isCorrectChain, connect, switchToTargetChain, contracts } = useWeb3();
 
   const steps = useMemo(
     () => [
@@ -669,43 +568,18 @@ export default function NewOrderPage() {
   const [arbiter, setArbiter] = useState("");
 
   const [token, setToken] = useState(WEB3_CONFIG.tokenAddress || "");
-
   const [priceHuman, setPriceHuman] = useState("");
 
-  // Advance: UI percent, internal bps
   const [advancePercent, setAdvancePercent] = useState("20");
   const [advanceBps, setAdvanceBps] = useState("2000");
-
   const [advanceApprovalBy, setAdvanceApprovalBy] = useState("0");
 
   const [milestones, setMilestones] = useState([
-    {
-      name: "m1",
-      bps: "3000",
-      planBy: "0",
-      deliveryBy: "0",
-      inspectionBy: "0",
-      buyerApprovalBy: "0",
-    },
-    {
-      name: "m2",
-      bps: "3000",
-      planBy: "0",
-      deliveryBy: "0",
-      inspectionBy: "0",
-      buyerApprovalBy: "0",
-    },
-    {
-      name: "m3",
-      bps: "2000",
-      planBy: "0",
-      deliveryBy: "0",
-      inspectionBy: "0",
-      buyerApprovalBy: "0",
-    },
+    { name: "m1", bps: "3000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
+    { name: "m2", bps: "3000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
+    { name: "m3", bps: "2000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
   ]);
 
-  // ✅ UI percent for each milestone (same index as milestones)
   const [milestonePercents, setMilestonePercents] = useState(() => [
     bpsToPercentString("3000"),
     bpsToPercentString("3000"),
@@ -714,14 +588,12 @@ export default function NewOrderPage() {
 
   const [orderId, setOrderId] = useState("");
 
-  // cleanup redirect timer on unmount
   useEffect(() => {
     return () => {
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     };
   }, []);
 
-  // advance percent -> bps
   useEffect(() => {
     if (advancePercent === "") {
       setAdvanceBps("0");
@@ -732,7 +604,6 @@ export default function NewOrderPage() {
     setAdvanceBps(String(bps));
   }, [advancePercent]);
 
-  // sync milestonePercents length with milestones length + keep percents in sync if milestones bps change
   useEffect(() => {
     setMilestonePercents((prev) => {
       const next = [...prev];
@@ -810,12 +681,10 @@ export default function NewOrderPage() {
     }
 
     const p = Number(sanitizeNumberString(advancePercent));
-    if (Number.isNaN(p) || p < 0 || p > 100)
-      fe.advanceBps = "Advance must be between 0 and 100%.";
+    if (Number.isNaN(p) || p < 0 || p > 100) fe.advanceBps = "Advance must be between 0 and 100%.";
 
     setFieldErrors(fe);
-    if (Object.keys(fe).length)
-      throw new Error("Please fix the highlighted fields.");
+    if (Object.keys(fe).length) throw new Error("Please fix the highlighted fields.");
   }
 
   function validateMilestonesSoft() {
@@ -840,21 +709,13 @@ export default function NewOrderPage() {
     if (!bpsOk) fe.bpsTotal = `BPS must sum to 10000. Current: ${totalBps}`;
 
     setFieldErrors(fe);
-    if (Object.keys(fe).length)
-      throw new Error("Please fix the highlighted fields.");
+    if (Object.keys(fe).length) throw new Error("Please fix the highlighted fields.");
   }
 
   function addMilestoneRow() {
     setMilestones((prev) => [
       ...prev,
-      {
-        name: `m${prev.length + 1}`,
-        bps: "0",
-        planBy: "0",
-        deliveryBy: "0",
-        inspectionBy: "0",
-        buyerApprovalBy: "0",
-      },
+      { name: `m${prev.length + 1}`, bps: "0", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
     ]);
     setMilestonePercents((prev) => [...prev, "0"]);
   }
@@ -865,9 +726,7 @@ export default function NewOrderPage() {
   }
 
   function updateMilestone(idx, key, value) {
-    setMilestones((prev) =>
-      prev.map((m, i) => (i === idx ? { ...m, [key]: value } : m))
-    );
+    setMilestones((prev) => prev.map((m, i) => (i === idx ? { ...m, [key]: value } : m)));
   }
 
   function updateMilestonePercent(idx, percentStr) {
@@ -903,12 +762,10 @@ export default function NewOrderPage() {
   const inFlightRef = useRef(false);
 
   async function handleCreateAndLock() {
-    // لاگ کلیک
     createRunRef.current += 1;
     const runId = createRunRef.current;
     console.log(`\n🟦 [Create&Lock] CLICK runId=${runId} busy=${busy} inFlight=${inFlightRef.current}`);
 
-    // ✅ گارد خیلی محکم برای جلوگیری از اجرای دوباره
     if (inFlightRef.current) {
       console.warn(`🟨 [Create&Lock] BLOCKED (already inFlight) runId=${runId}`);
       return;
@@ -929,37 +786,14 @@ export default function NewOrderPage() {
     try {
       console.log(`🟦 [Create&Lock] START runId=${runId}`);
 
-      console.log(`🟦 [Create&Lock] requireWeb3Ready... runId=${runId}`);
       requireWeb3Ready();
-
-      console.log(`🟦 [Create&Lock] validateHeaderSoft... runId=${runId}`);
       validateHeaderSoft();
-
-      console.log(`🟦 [Create&Lock] validateMilestonesSoft... runId=${runId}`);
       validateMilestonesSoft();
 
       const odl = [BigInt(advanceApprovalBy || "0")];
       const wei = parseUnits18(priceHuman);
 
-      console.log(`🟦 [Create&Lock] Prepared params runId=${runId}`, {
-        buyer,
-        seller,
-        carrier: carrier || ZERO,
-        inspector: inspector || ZERO,
-        bank,
-        arbiter: arbiter || ZERO,
-        token,
-        wei: wei.toString(),
-        advanceBps,
-        odl: odl.map(String),
-        milestonesCount: milestones.length,
-        milestonesBps: milestones.map((m) => m.bps),
-      });
-
-      // ------------------ TX#1: createOrderHeader ------------------
-      console.log(`🟦 [Create&Lock] TX#1 createOrderHeader: sending... runId=${runId}`);
       setStatus("Creating order header… confirm in wallet.");
-
       const tx1 = await contracts.sg.createOrderHeader(
         buyer,
         seller,
@@ -973,24 +807,9 @@ export default function NewOrderPage() {
         odl
       );
 
-      console.log(`🟩 [Create&Lock] TX#1 SENT runId=${runId}`, {
-        hash: tx1?.hash,
-        nonce: tx1?.nonce,
-        from: tx1?.from,
-        to: tx1?.to,
-      });
-
       setStatus("Waiting for confirmation…");
       const rc1 = await tx1.wait();
 
-      console.log(`🟩 [Create&Lock] TX#1 CONFIRMED runId=${runId}`, {
-        blockNumber: rc1?.blockNumber,
-        transactionHash: rc1?.transactionHash,
-        status: rc1?.status,
-        logsLen: (rc1?.logs || []).length,
-      });
-
-      // parse orderId
       let createdId = "";
       for (const log of rc1.logs || []) {
         try {
@@ -999,21 +818,13 @@ export default function NewOrderPage() {
             createdId = parsed.args.orderId.toString();
             break;
           }
-        } catch (err) {
-          // خیلی شلوغ نشه
-        }
+        } catch {}
       }
-
-      console.log(`🟦 [Create&Lock] Parsed orderId runId=${runId}`, { createdId });
-
       if (!createdId) throw new Error("Could not parse OrderCreated event.");
 
       setOrderId(createdId);
 
-      // ------------------ TX#2..N: addMilestone ------------------
-      console.log(`🟦 [Create&Lock] Adding milestones runId=${runId} count=${milestones.length}`);
       setStatus("Adding milestones… confirm in wallet for each milestone.");
-
       for (let i = 0; i < milestones.length; i++) {
         const m = milestones[i];
         const name32 = toBytes32Label(m.name);
@@ -1024,81 +835,28 @@ export default function NewOrderPage() {
           BigInt(m.buyerApprovalBy || "0"),
         ];
 
-        console.log(`🟦 [Create&Lock] TX addMilestone #${i + 1} PREP runId=${runId}`, {
-          idx: i,
-          name: m.name,
-          name32,
-          bps: m.bps,
-          deadlines: dl.map(String),
-        });
-
         setStatus(`Adding milestone ${i + 1}/${milestones.length}… confirm in wallet.`);
-        const txM = await contracts.sg.addMilestone(
-          BigInt(createdId),
-          name32,
-          Number(m.bps),
-          dl
-        );
-
-        console.log(`🟩 [Create&Lock] TX addMilestone #${i + 1} SENT runId=${runId}`, {
-          hash: txM?.hash,
-          nonce: txM?.nonce,
-          from: txM?.from,
-          to: txM?.to,
-        });
-
-        const rcM = await txM.wait();
-
-        console.log(`🟩 [Create&Lock] TX addMilestone #${i + 1} CONFIRMED runId=${runId}`, {
-          txHash: rcM?.transactionHash,
-          status: rcM?.status,
-          blockNumber: rcM?.blockNumber,
-        });
+        const txM = await contracts.sg.addMilestone(BigInt(createdId), name32, Number(m.bps), dl);
+        await txM.wait();
       }
-
-      // ------------------ LAST TX: lockMilestones ------------------
-      console.log(`🟦 [Create&Lock] TX lockMilestones PREP runId=${runId}`, {
-        orderId: createdId,
-      });
 
       setStatus("Locking milestones… confirm in wallet.");
       const txLock = await contracts.sg.lockMilestones(BigInt(createdId));
-
-      console.log(`🟩 [Create&Lock] TX lockMilestones SENT runId=${runId}`, {
-        hash: txLock?.hash,
-        nonce: txLock?.nonce,
-        from: txLock?.from,
-        to: txLock?.to,
-      });
-
-      const rcLock = await txLock.wait();
-
-      console.log(`🟩 [Create&Lock] TX lockMilestones CONFIRMED runId=${runId}`, {
-        txHash: rcLock?.transactionHash,
-        status: rcLock?.status,
-        blockNumber: rcLock?.blockNumber,
-      });
+      await txLock.wait();
 
       const elapsedMs = Date.now() - startedAt;
-      console.log(`✅✅ [Create&Lock] DONE runId=${runId} elapsedMs=${elapsedMs}`, {
-        orderId: createdId,
-      });
+      console.log(`✅✅ [Create&Lock] DONE runId=${runId} elapsedMs=${elapsedMs}`, { orderId: createdId });
 
       setStatus(`Created & locked ✅ orderId=${createdId}. Redirecting to home…`);
-
-      // ⚠️ ریدایرکت اینجا مشکلی ایجاد نمی‌کند؛ فقط ناوبری است.
-      // اگر home شما /app است این را عوض کن
       router.push("/");
     } catch (e) {
       console.error(`🟥 [Create&Lock] ERROR runId=${runId}`, e);
       setError(e?.shortMessage || e?.message || "Create failed");
     } finally {
-      console.log(`🟦 [Create&Lock] FINALLY runId=${runId} busy->false inFlight->false`);
       setBusy(false);
       inFlightRef.current = false;
     }
   }
-
 
   //******************************************************************************** */
   async function handleApproveAndFund() {
@@ -1132,29 +890,34 @@ export default function NewOrderPage() {
     <PageShell>
       <Container>
         {/* Top Bar */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-          <Link
-            href="/app"
-            className="inline-flex items-center gap-2 rounded-2xl bg-white ring-1 ring-black/10 px-5 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
+        <div className={styles.topBar}>
+          <Link href="/app" className={styles.linkBtn}>
+            <ArrowLeft size={18} />
             Back to Dashboard
           </Link>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
             {!account ? (
               <ButtonPrimary onClick={connect}>
-                <Wallet className="h-4 w-4" />
+                <Wallet size={18} />
                 Connect Wallet
               </ButtonPrimary>
             ) : !isCorrectChain ? (
               <ButtonPrimary onClick={switchToTargetChain}>
                 Switch Network
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight size={18} />
               </ButtonPrimary>
             ) : (
-              <span className="inline-flex items-center gap-2 rounded-full bg-white ring-1 ring-black/10 px-4 py-2 text-sm font-medium text-gray-900">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className={styles.progressPill}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: "#22c55e",
+                    display: "inline-block",
+                  }}
+                />
                 Connected
               </span>
             )}
@@ -1163,7 +926,7 @@ export default function NewOrderPage() {
 
         <WizardTop step={step} setStep={setStep} steps={steps} />
 
-        <div className="space-y-3 mb-8">
+        <div className={styles.stack12} style={{ marginBottom: 24 }}>
           {status ? (
             <InlineBanner kind="success" title="Status">
               {status}
@@ -1176,250 +939,168 @@ export default function NewOrderPage() {
           ) : null}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_380px] items-start">
-          {/* Main */}
-          <div className="min-w-0 space-y-8">
-            {/* Step 1 */}
-            {step === 1 ? (
-              <Card>
-                <CardHeader
-                  title="Step 1 — Order Header"
-                  subtitle="Provide parties, settlement token, price (human), and advance terms."
-                  right={<ShieldCheck className="h-5 w-5 text-gray-900" />}
-                />
-                <CardBody>
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <SectionCard
-                      title="Parties"
-                      subtitle="Addresses that define the order participants"
-                    >
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <Field label="Buyer" error={fieldErrors.buyer} hint="0x…">
-                          <Input
-                            value={buyer}
-                            onChange={(e) => setBuyer(e.target.value)}
-                            placeholder="0x..."
-                            autoComplete="off"
-                            error={fieldErrors.buyer}
-                            mono
-                          />
-                        </Field>
-                        <Field label="Seller" error={fieldErrors.seller} hint="0x…">
-                          <Input
-                            value={seller}
-                            onChange={(e) => setSeller(e.target.value)}
-                            placeholder="0x..."
-                            autoComplete="off"
-                            error={fieldErrors.seller}
-                            mono
-                          />
-                        </Field>
-                        <Field label="Bank" error={fieldErrors.bank} hint="0x…">
-                          <Input
-                            value={bank}
-                            onChange={(e) => setBank(e.target.value)}
-                            placeholder="0x..."
-                            autoComplete="off"
-                            error={fieldErrors.bank}
-                            mono
-                          />
-                        </Field>
-                        <Field
-                          label="Inspector (required)"
-                          error={fieldErrors.inspector}
-                          hint="0x…"
-                        >
-                          <Input
-                            value={inspector}
-                            onChange={(e) => setInspector(e.target.value)}
-                            placeholder="0x..."
-                            autoComplete="off"
-                            error={fieldErrors.inspector}
-                            mono
-                          />
-                        </Field>
-                        <Field label="Carrier (optional)" hint="0x… or empty">
-                          <Input
-                            value={carrier}
-                            onChange={(e) => setCarrier(e.target.value)}
-                            placeholder="0x... or empty"
-                            autoComplete="off"
-                            mono
-                          />
-                        </Field>
-                        <Field label="Arbiter (optional)" hint="0x… or empty">
-                          <Input
-                            value={arbiter}
-                            onChange={(e) => setArbiter(e.target.value)}
-                            placeholder="0x... or empty"
-                            autoComplete="off"
-                            mono
-                          />
-                        </Field>
-                      </div>
-                    </SectionCard>
+        {/* Main Column Only (you can add sidebar later) */}
+        <div style={{ display: "grid", gap: 22 }}>
+          {/* Step 1 */}
+          {step === 1 ? (
+            <Card fullBleed>
+              <CardHeader
+                title="Step 1 — Order Header"
+                subtitle="Provide parties, settlement token, price (human), and advance terms."
+                right={<ShieldCheck size={20} />}
+              />
+              <CardBody>
+                <div className={styles.grid2}>
+                  <SectionCard title="Parties" subtitle="Addresses that define the order participants">
+                    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                      <Field label="Buyer" error={fieldErrors.buyer} hint="0x…">
+                        <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.buyer} mono />
+                      </Field>
 
-                    <SectionCard
-                      title="Payment & Token"
-                      subtitle={`Human-friendly amount (decimals=${TOKEN_DECIMALS}) + percent-based advance`}
-                    >
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <Field label="Token" error={fieldErrors.token} hint="from env by default">
-                          <Input
-                            value={token}
-                            onChange={(e) => setToken(e.target.value)}
-                            placeholder="0x..."
-                            autoComplete="off"
-                            error={fieldErrors.token}
-                            mono
-                          />
-                        </Field>
+                      <Field label="Seller" error={fieldErrors.seller} hint="0x…">
+                        <Input value={seller} onChange={(e) => setSeller(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.seller} mono />
+                      </Field>
 
-                        <Field
-                          label="Price"
-                          hint="e.g. 1.25"
-                          error={fieldErrors.priceHuman}
-                          rightSlot={
-                            priceWei > 0n ? (
-                              <span className="inline-flex items-center gap-2">
-                                <Badge kind="good">Wei</Badge>
-                                <span className="text-[11px] font-medium text-gray-600 whitespace-nowrap">
-                                  {truncateMiddle(priceWei.toString(), 10, 8)}
-                                </span>
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500">—</span>
-                            )
-                          }
-                        >
-                          <Input
-                            value={priceHuman}
-                            onChange={(e) => setPriceHuman(e.target.value)}
-                            placeholder="0.0"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            error={fieldErrors.priceHuman}
-                          />
-                        </Field>
+                      <Field label="Bank" error={fieldErrors.bank} hint="0x…">
+                        <Input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.bank} mono />
+                      </Field>
 
-                        <Field
-                          label="Advance (%)"
-                          hint="e.g. 20 = 20%"
-                          error={fieldErrors.advanceBps}
-                          rightSlot={
-                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                              {advanceBps} bps
+                      <Field label="Inspector (required)" error={fieldErrors.inspector} hint="0x…">
+                        <Input value={inspector} onChange={(e) => setInspector(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.inspector} mono />
+                      </Field>
+
+                      <Field label="Carrier (optional)" hint="0x… or empty">
+                        <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="0x... or empty" autoComplete="off" mono />
+                      </Field>
+
+                      <Field label="Arbiter (optional)" hint="0x… or empty">
+                        <Input value={arbiter} onChange={(e) => setArbiter(e.target.value)} placeholder="0x... or empty" autoComplete="off" mono />
+                      </Field>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard
+                    title="Payment & Token"
+                    subtitle={`Human-friendly amount (decimals=${TOKEN_DECIMALS}) + percent-based advance`}
+                  >
+                    <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                      <Field label="Token" error={fieldErrors.token} hint="from env by default">
+                        <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.token} mono />
+                      </Field>
+
+                      <Field
+                        label="Price"
+                        hint="e.g. 1.25"
+                        error={fieldErrors.priceHuman}
+                        rightSlot={
+                          priceWei > 0n ? (
+                            <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.7 }}>
+                              wei: {truncateMiddle(priceWei.toString(), 10, 8)}
                             </span>
-                          }
-                        >
-                          <Input
-                            value={advancePercent}
-                            onChange={(e) => setAdvancePercent(e.target.value)}
-                            placeholder="20"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            error={fieldErrors.advanceBps}
-                          />
-                        </Field>
+                          ) : (
+                            <span style={{ fontSize: 12, opacity: 0.6 }}>—</span>
+                          )
+                        }
+                      >
+                        <Input value={priceHuman} onChange={(e) => setPriceHuman(e.target.value)} placeholder="0.0" inputMode="decimal" autoComplete="off" error={fieldErrors.priceHuman} />
+                      </Field>
 
-                        <div className="sm:col-span-2">
-                          <DeadlineField
-                            label="Advance approval deadline"
-                            value={advanceApprovalBy}
-                            onChange={setAdvanceApprovalBy}
-                          />
-                        </div>
+                      <Field
+                        label="Advance (%)"
+                        hint="e.g. 20 = 20%"
+                        error={fieldErrors.advanceBps}
+                        rightSlot={<span style={{ fontSize: 12, opacity: 0.65 }}>{advanceBps} bps</span>}
+                      >
+                        <Input value={advancePercent} onChange={(e) => setAdvancePercent(e.target.value)} placeholder="20" inputMode="decimal" autoComplete="off" error={fieldErrors.advanceBps} />
+                      </Field>
+
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <DeadlineField label="Advance approval deadline" value={advanceApprovalBy} onChange={setAdvanceApprovalBy} />
                       </div>
-                    </SectionCard>
+                    </div>
+                  </SectionCard>
+                </div>
+
+                <div className={styles.btnRow}>
+                  <Chip kind={bpsOk ? "good" : "bad"}>
+                    Total BPS: <span style={{ fontWeight: 900 }}>{totalBps}</span> / 10000
+                  </Chip>
+
+                  <ButtonPrimary
+                    onClick={() => {
+                      resetMsg();
+                      resetFieldErrors();
+                      goNext();
+                    }}
+                  >
+                    Next <ArrowRight size={18} />
+                  </ButtonPrimary>
+                </div>
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {/* Step 2 */}
+          {step === 2 ? (
+            <Card fullBleed>
+              <CardHeader
+                title="Step 2 — Milestones"
+                subtitle="Configure milestones and deadlines. Total BPS must be 10000."
+                right={
+                  <ButtonSecondary onClick={addMilestoneRow}>
+                    <Plus size={18} />
+                    Add Milestone
+                  </ButtonSecondary>
+                }
+              />
+              <CardBody>
+                {fieldErrors.milestones ? (
+                  <div style={{ marginBottom: 14 }}>
+                    <InlineBanner kind="error">{fieldErrors.milestones}</InlineBanner>
                   </div>
+                ) : null}
 
-                  <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                    <Chip kind={bpsOk ? "good" : "bad"}>
-                      Total BPS: <span className="font-semibold">{totalBps}</span> / 10000
-                    </Chip>
-
-                    <ButtonPrimary
-                      onClick={() => {
-                        resetMsg();
-                        resetFieldErrors();
-                        goNext();
+                <div className={styles.stack16}>
+                  {milestones.map((m, idx) => (
+                    <div
+                      key={`ms-${idx}`}
+                      style={{
+                        borderRadius: 22,
+                        background: "rgba(255,255,255,0.80)",
+                        border: "1px solid rgba(2,6,23,0.10)",
+                        boxShadow: "0 1px 0 rgba(2,6,23,0.05)",
+                        padding: 16,
+                        overflow: "hidden",
                       }}
                     >
-                      Next
-                      <ArrowRight className="h-4 w-4" />
-                    </ButtonPrimary>
-                  </div>
-                </CardBody>
-              </Card>
-            ) : null}
-
-            {/* Step 2 */}
-            {step === 2 ? (
-              <Card>
-                <CardHeader
-                  title="Step 2 — Milestones"
-                  subtitle="Configure milestones and deadlines. Total BPS must be 10000."
-                  right={
-                    <ButtonSecondary onClick={addMilestoneRow}>
-                      <Plus className="h-4 w-4" />
-                      Add Milestone
-                    </ButtonSecondary>
-                  }
-                />
-                <CardBody>
-                  {fieldErrors.milestones ? (
-                    <div className="mb-5">
-                      <InlineBanner kind="error">{fieldErrors.milestones}</InlineBanner>
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-6">
-                    {milestones.map((m, idx) => (
-                      <div
-                        key={`ms-${idx}`}
-                        className="rounded-[20px] bg-white ring-1 ring-black/10 px-6 py-5 shadow-[0_1px_0_rgba(17,24,39,0.05)] overflow-hidden"
-                      >
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                          <div className="min-w-0">
-                            <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
-                              <Layers className="h-4 w-4" />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 900 }}>
+                              <Layers size={18} />
                               Milestone #{idx + 1}
                             </div>
-                            <div className="mt-2 text-xs text-gray-500 break-words">
+                            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.65, wordBreak: "break-word" }}>
                               bytes32:{" "}
-                              <span className="font-mono">
+                              <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
                                 {toBytes32Label(m.name || "").slice(0, 18)}…
                               </span>
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => removeMilestoneRow(idx)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-white ring-1 ring-black/10 px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50 transition whitespace-nowrap"
-                            type="button"
-                          >
-                            <Trash2 className="h-4 w-4" />
+                          <ButtonSecondary onClick={() => removeMilestoneRow(idx)}>
+                            <Trash2 size={18} />
                             Remove
-                          </button>
+                          </ButtonSecondary>
                         </div>
 
-                        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                          <SectionCard
-                            title="Core"
-                            subtitle="Milestone identity & allocation"
-                            className="bg-white"
-                          >
-                            <div className="grid gap-6 sm:grid-cols-2">
-                              <Field
-                                label="Name"
-                                hint="m1 / steel_1"
-                                error={fieldErrors[`ms_${idx}_name`]}
-                              >
+                        <div className={styles.grid2}>
+                          <SectionCard title="Core" subtitle="Milestone identity & allocation">
+                            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                              <Field label="Name" hint="m1 / steel_1" error={fieldErrors[`ms_${idx}_name`]}>
                                 <Input
                                   value={m.name}
-                                  onChange={(e) =>
-                                    updateMilestone(idx, "name", e.target.value)
-                                  }
+                                  onChange={(e) => updateMilestone(idx, "name", e.target.value)}
                                   placeholder="m1"
                                   autoComplete="off"
                                   error={fieldErrors[`ms_${idx}_name`]}
@@ -1430,17 +1111,11 @@ export default function NewOrderPage() {
                                 label="Allocation (%)"
                                 hint="e.g. 30 = 30%"
                                 error={fieldErrors[`ms_${idx}_bps`]}
-                                rightSlot={
-                                  <span className="text-xs text-gray-500 whitespace-nowrap">
-                                    {m.bps} bps
-                                  </span>
-                                }
+                                rightSlot={<span style={{ fontSize: 12, opacity: 0.65 }}>{m.bps} bps</span>}
                               >
                                 <Input
                                   value={milestonePercents[idx] ?? ""}
-                                  onChange={(e) =>
-                                    updateMilestonePercent(idx, e.target.value)
-                                  }
+                                  onChange={(e) => updateMilestonePercent(idx, e.target.value)}
                                   placeholder="30"
                                   inputMode="decimal"
                                   autoComplete="off"
@@ -1450,217 +1125,164 @@ export default function NewOrderPage() {
                             </div>
                           </SectionCard>
 
-                          <SectionCard
-                            title="Deadlines"
-                            subtitle="Pick date & time"
-                            className="bg-white"
-                          >
-                            <div className="grid gap-4">
-                              <DeadlineField
-                                label="planBy"
-                                value={m.planBy}
-                                onChange={(v) => updateMilestone(idx, "planBy", v)}
-                              />
-                              <DeadlineField
-                                label="deliveryBy"
-                                value={m.deliveryBy}
-                                onChange={(v) =>
-                                  updateMilestone(idx, "deliveryBy", v)
-                                }
-                              />
-                              <DeadlineField
-                                label="inspectionBy"
-                                value={m.inspectionBy}
-                                onChange={(v) =>
-                                  updateMilestone(idx, "inspectionBy", v)
-                                }
-                              />
-                              <DeadlineField
-                                label="buyerApprovalBy"
-                                value={m.buyerApprovalBy}
-                                onChange={(v) =>
-                                  updateMilestone(idx, "buyerApprovalBy", v)
-                                }
-                              />
+                          <SectionCard title="Deadlines" subtitle="Pick date & time">
+                            <div className={styles.stack12}>
+                              <DeadlineField label="planBy" value={m.planBy} onChange={(v) => updateMilestone(idx, "planBy", v)} />
+                              <DeadlineField label="deliveryBy" value={m.deliveryBy} onChange={(v) => updateMilestone(idx, "deliveryBy", v)} />
+                              <DeadlineField label="inspectionBy" value={m.inspectionBy} onChange={(v) => updateMilestone(idx, "inspectionBy", v)} />
+                              <DeadlineField label="buyerApprovalBy" value={m.buyerApprovalBy} onChange={(v) => updateMilestone(idx, "buyerApprovalBy", v)} />
                             </div>
                           </SectionCard>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-12 pt-8 flex flex-wrap items-center justify-between gap-4">
-                    <Chip kind={bpsChipKind}>
-                      Total BPS: <span className="font-semibold">{totalBps}</span> / 10000
-                    </Chip>
-
-                    {fieldErrors.bpsTotal ? (
-                      <span className="text-xs text-red-600">{fieldErrors.bpsTotal}</span>
-                    ) : null}
-
-                    <div className="flex items-center gap-3">
-                      <ButtonSecondary onClick={goBack}>
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                      </ButtonSecondary>
-                      <ButtonPrimary onClick={goNext}>
-                        Next
-                        <ArrowRight className="h-4 w-4" />
-                      </ButtonPrimary>
                     </div>
-                  </div>
-                </CardBody>
-              </Card>
-            ) : null}
+                  ))}
+                </div>
 
-            {/* Step 3 */}
-            {step === 3 ? (
-              <Card>
-                <CardHeader
-                  title="Step 3 — Review"
-                  subtitle="Confirm everything, then create the order and lock milestones on-chain."
-                  right={<Sparkles className="h-5 w-5 text-gray-900" />}
-                />
-                <CardBody>
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <SectionCard
-                      title="Parties"
-                      subtitle="Verify participant addresses"
-                      className="bg-white"
-                    >
-                      <div className="grid gap-3">
-                        <MiniStat label="Buyer" value={buyer || "—"} copyable />
-                        <MiniStat label="Seller" value={seller || "—"} copyable />
-                        <MiniStat label="Bank" value={bank || "—"} copyable />
-                        <MiniStat label="Inspector" value={inspector || "—"} copyable />
-                        <MiniStat label="Carrier" value={carrier || ZERO} copyable />
-                        <MiniStat label="Arbiter" value={arbiter || ZERO} copyable />
-                      </div>
-                    </SectionCard>
+                <div className={styles.btnRow} style={{ marginTop: 22 }}>
+                  <Chip kind={bpsChipKind}>
+                    Total BPS: <span style={{ fontWeight: 900 }}>{totalBps}</span> / 10000
+                  </Chip>
 
-                    <SectionCard
-                      title="Terms"
-                      subtitle="Human-friendly UI, on-chain BPS"
-                      className="bg-white"
-                    >
-                      <div className="grid gap-3">
-                        <MiniStat label="Token" value={token || "—"} copyable />
-                        <MiniStat label="Price (human)" value={priceHuman || "—"} />
-                        <MiniStat
-                          label="Price (wei)"
-                          value={priceWei > 0n ? priceWei.toString() : "—"}
-                          copyable
-                        />
-                        <MiniStat label="Advance (%)" value={advancePercent || "0"} />
-                        <MiniStat label="Advance (bps)" value={advanceBps || "0"} />
-                        <MiniStat
-                          label="Milestones (bps)"
-                          value={`${milestonesTotalBps} / 10000`}
-                        />
-                        <MiniStat label="Total BPS" value={`${totalBps} / 10000`} />
-                        <MiniStat
-                          label="Advance Deadline"
-                          value={formatUnix(advanceApprovalBy) || "—"}
-                        />
-                      </div>
-                    </SectionCard>
-                  </div>
+                  {fieldErrors.bpsTotal ? (
+                    <span style={{ fontSize: 12, color: "rgb(220,38,38)", fontWeight: 900 }}>{fieldErrors.bpsTotal}</span>
+                  ) : null}
 
-                  <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                    <ButtonSecondary onClick={goBack} disabled={busy}>
-                      <ArrowLeft className="h-4 w-4" />
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <ButtonSecondary onClick={goBack}>
+                      <ArrowLeft size={18} />
                       Back
                     </ButtonSecondary>
-
-                    <ButtonPrimary
-                      onClick={handleCreateAndLock}
-                      disabled={busy || !canWrite || !bpsOk}
-                      loading={busy}
-                    >
-                      Create & Lock
-                      <ArrowRight className="h-4 w-4" />
+                    <ButtonPrimary onClick={goNext}>
+                      Next <ArrowRight size={18} />
                     </ButtonPrimary>
                   </div>
-                </CardBody>
-              </Card>
-            ) : null}
+                </div>
+              </CardBody>
+            </Card>
+          ) : null}
 
-            {/* Step 4 */}
-            {step === 4 ? (
-              <Card>
-                <CardHeader
-                  title="Step 4 — Funding"
-                  subtitle="Approve token allowance, then fund escrow with the full price."
-                  right={
-                    orderId ? (
-                      <span className="rounded-full bg-white ring-1 ring-black/10 px-4 py-2 text-sm font-semibold text-gray-900">
-                        orderId: <span className="font-mono">{orderId}</span>
+          {/* Step 3 */}
+          {step === 3 ? (
+            <Card fullBleed>
+              <CardHeader
+                title="Step 3 — Review"
+                subtitle="Confirm everything, then create the order and lock milestones on-chain."
+                right={<Sparkles size={20} />}
+              />
+              <CardBody>
+                <div className={styles.grid2}>
+                  <SectionCard title="Parties" subtitle="Verify participant addresses">
+                    <div className={styles.stack12}>
+                      <MiniStat label="Buyer" value={buyer || "—"} copyable />
+                      <MiniStat label="Seller" value={seller || "—"} copyable />
+                      <MiniStat label="Bank" value={bank || "—"} copyable />
+                      <MiniStat label="Inspector" value={inspector || "—"} copyable />
+                      <MiniStat label="Carrier" value={carrier || ZERO} copyable />
+                      <MiniStat label="Arbiter" value={arbiter || ZERO} copyable />
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard title="Terms" subtitle="Human-friendly UI, on-chain BPS">
+                    <div className={styles.stack12}>
+                      <MiniStat label="Token" value={token || "—"} copyable />
+                      <MiniStat label="Price (human)" value={priceHuman || "—"} />
+                      <MiniStat label="Price (wei)" value={priceWei > 0n ? priceWei.toString() : "—"} copyable />
+                      <MiniStat label="Advance (%)" value={advancePercent || "0"} />
+                      <MiniStat label="Advance (bps)" value={advanceBps || "0"} />
+                      <MiniStat label="Milestones (bps)" value={`${milestonesTotalBps} / 10000`} />
+                      <MiniStat label="Total BPS" value={`${totalBps} / 10000`} />
+                      <MiniStat label="Advance Deadline" value={formatUnix(advanceApprovalBy) || "—"} />
+                    </div>
+                  </SectionCard>
+                </div>
+
+                <div className={styles.btnRow}>
+                  <ButtonSecondary onClick={goBack} disabled={busy}>
+                    <ArrowLeft size={18} />
+                    Back
+                  </ButtonSecondary>
+
+                  <ButtonPrimary onClick={handleCreateAndLock} disabled={busy || !canWrite || !bpsOk} loading={busy}>
+                    Create & Lock <ArrowRight size={18} />
+                  </ButtonPrimary>
+                </div>
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {/* Step 4 */}
+          {step === 4 ? (
+            <Card fullBleed>
+              <CardHeader
+                title="Step 4 — Funding"
+                subtitle="Approve token allowance, then fund escrow with the full price."
+                right={
+                  orderId ? (
+                    <span className={styles.progressPill} style={{ gap: 8 }}>
+                      orderId:
+                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
+                        {orderId}
                       </span>
-                    ) : null
-                  }
-                />
-                <CardBody>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <MiniStat label="Token" value={WEB3_CONFIG.tokenAddress} copyable />
-                    <MiniStat
-                      label="Escrow (SupplyGuarantee)"
-                      value={WEB3_CONFIG.sgAddress}
-                      copyable
-                    />
-                    <MiniStat label="ChainId" value={String(WEB3_CONFIG.chainId)} />
-                    <MiniStat label="Amount (human)" value={priceHuman || "—"} />
-                    <MiniStat
-                      label="Amount (wei)"
-                      value={priceWei > 0n ? priceWei.toString() : "—"}
-                      copyable
-                    />
-                    <MiniStat
-                      label="Formatted check"
-                      value={priceWei > 0n ? formatUnits18(priceWei) : "—"}
-                    />
-                  </div>
+                    </span>
+                  ) : null
+                }
+              />
+              <CardBody>
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+                  <MiniStat label="Token" value={WEB3_CONFIG.tokenAddress} copyable />
+                  <MiniStat label="Escrow (SupplyGuarantee)" value={WEB3_CONFIG.sgAddress} copyable />
+                  <MiniStat label="ChainId" value={String(WEB3_CONFIG.chainId)} />
+                  <MiniStat label="Amount (human)" value={priceHuman || "—"} />
+                  <MiniStat label="Amount (wei)" value={priceWei > 0n ? priceWei.toString() : "—"} copyable />
+                  <MiniStat label="Formatted check" value={priceWei > 0n ? formatUnits18(priceWei) : "—"} />
+                </div>
 
-                  <div className="mt-6">
-                    <InlineBanner kind="info" title="What will happen">
-                      This triggers <span className="font-mono">token.approve()</span>{" "}
-                      and then <span className="font-mono">sg.fund()</span>.
-                    </InlineBanner>
-                  </div>
+                <div style={{ marginTop: 14 }}>
+                  <InlineBanner kind="info" title="What will happen">
+                    This triggers <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>token.approve()</span>{" "}
+                    and then{" "}
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>sg.fund()</span>.
+                  </InlineBanner>
+                </div>
 
-                  <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                    <ButtonSecondary onClick={goBack} disabled={busy}>
-                      <ArrowLeft className="h-4 w-4" />
-                      Back
-                    </ButtonSecondary>
+                <div className={styles.btnRow}>
+                  <ButtonSecondary onClick={goBack} disabled={busy}>
+                    <ArrowLeft size={18} />
+                    Back
+                  </ButtonSecondary>
 
-                    {!account ? (
-                      <ButtonPrimary onClick={connect}>
-                        <Wallet className="h-4 w-4" />
-                        Connect Wallet
-                      </ButtonPrimary>
-                    ) : !isCorrectChain ? (
-                      <ButtonPrimary onClick={switchToTargetChain}>
-                        Switch Network
-                        <ArrowRight className="h-4 w-4" />
-                      </ButtonPrimary>
-                    ) : (
-                      <ButtonPrimary
-                        onClick={handleApproveAndFund}
-                        disabled={!canWrite || !orderId || priceWei <= 0n}
-                        loading={busy}
-                      >
-                        <Coins className="h-4 w-4" />
-                        Approve + Fund
-                      </ButtonPrimary>
-                    )}
-                  </div>
-                </CardBody>
-              </Card>
-            ) : null}
-          </div>
-
-          {/* Side */}
+                  {!account ? (
+                    <ButtonPrimary onClick={connect}>
+                      <Wallet size={18} />
+                      Connect Wallet
+                    </ButtonPrimary>
+                  ) : !isCorrectChain ? (
+                    <ButtonPrimary onClick={switchToTargetChain}>
+                      Switch Network <ArrowRight size={18} />
+                    </ButtonPrimary>
+                  ) : (
+                    <ButtonPrimary
+                      onClick={handleApproveAndFund}
+                      disabled={!canWrite || !orderId || priceWei <= 0n}
+                      loading={busy}
+                    >
+                      <Coins size={18} />
+                      Approve + Fund
+                    </ButtonPrimary>
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          ) : null}
         </div>
+
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </Container>
     </PageShell>
   );
