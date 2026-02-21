@@ -1,3 +1,5 @@
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -13,7 +15,13 @@ from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 from .models import Profile
-from .serializers import VerifySerializer, ProfileSerializer
+from .serializers import (
+    VerifySerializer,
+    ProfileSerializer,
+    NonceRequestSerializer,
+    NonceResponseSerializer,
+)
+
 
 User = get_user_model()
 
@@ -26,43 +34,115 @@ def build_login_message(address: str, nonce: str) -> str:
     return f"Atomicmail login\nAddress: {address}\nNonce: {nonce}"
 
 
+def normalize_address(addr: str) -> str:
+    return Web3.to_checksum_address(addr).lower()
+
+
+def build_siwe_message(
+    *,
+    domain: str,
+    address: str,
+    statement: str,
+    uri: str,
+    chain_id: int,
+    nonce: str,
+    issued_at,
+):
+    # Keep formatting stable. Don’t add extra spaces/newlines later.
+    issued_at_str = issued_at.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    statement_block = f"{statement}\n\n" if statement else ""
+
+    return (
+        f"{domain} wants you to sign in with your Ethereum account:\n"
+        f"{address}\n\n"
+        f"{statement_block}"
+        f"URI: {uri}\n"
+        f"Version: 1\n"
+        f"Chain ID: {chain_id}\n"
+        f"Nonce: {nonce}\n"
+        f"Issued At: {issued_at_str}"
+    )
+
+
 class NonceView(APIView):
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="address",
-                description="Wallet address (0x...)",
-                required=True,
-                type=str,
-            ),
-        ],
+        tags=["Auth"],
+        request=NonceRequestSerializer,
         responses={
-            200: OpenApiResponse(description="Nonce + message to sign"),
-            400: OpenApiResponse(description="Missing/invalid address"),
+            200: NonceResponseSerializer,
+            400: OpenApiResponse(description="Invalid address or bad input"),
         },
+        operation_id="auth_nonce_create",
+        summary="Create nonce and SIWE-style message to sign",
+        description=(
+            "Returns a short-lived nonce and a SIWE-style message.\n\n"
+            "Frontend should sign the returned `message` with MetaMask and then call `/auth/verify/`."
+        ),
     )
-    def get(self, request):
-        address = request.query_params.get("address")
-        if not address:
-            return Response({"detail": "address is required"}, status=400)
+    def post(self, request):
+        s = NonceRequestSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        raw_address = s.validated_data["address"]
+        chain_id = s.validated_data.get("chain_id", 1)
+        statement = s.validated_data.get("statement") or "Sign in to your dashboard."
 
         try:
-            addr = normalize_address(address)
+            addr = normalize_address(raw_address)
         except Exception:
             return Response({"detail": "invalid address"}, status=400)
 
-        profile, created = Profile.objects.get_or_create(wallet_address=addr)
-        if created or not profile.nonce:
-            profile.rotate_nonce()
-            profile.save(update_fields=["nonce"])
+        domain = request.get_host()
+        uri = request.build_absolute_uri("/")
+
+        issued_at = timezone.now()
+        expires_at = issued_at + timedelta(minutes=5)
+
+        profile, _ = Profile.objects.get_or_create(wallet_address=addr)
+
+        profile.rotate_nonce()
+        profile.nonce_chain_id = chain_id
+        profile.nonce_domain = domain
+        profile.nonce_uri = uri
+        profile.nonce_statement = statement
+        profile.nonce_issued_at = issued_at
+        profile.nonce_expires_at = expires_at
+        profile.save(
+            update_fields=[
+                "nonce",
+                "nonce_chain_id",
+                "nonce_domain",
+                "nonce_uri",
+                "nonce_statement",
+                "nonce_issued_at",
+                "nonce_expires_at",
+                "updated_at",
+            ]
+        )
+
+        message = build_siwe_message(
+            domain=profile.nonce_domain,
+            address=profile.wallet_address,
+            statement=profile.nonce_statement,
+            uri=profile.nonce_uri,
+            chain_id=profile.nonce_chain_id,
+            nonce=profile.nonce,
+            issued_at=profile.nonce_issued_at,
+        )
 
         return Response(
             {
                 "address": profile.wallet_address,
+                "chain_id": profile.nonce_chain_id,
                 "nonce": profile.nonce,
-                "message": build_login_message(profile.wallet_address, profile.nonce),
+                "issued_at": profile.nonce_issued_at,
+                "expires_at": profile.nonce_expires_at,
+                "domain": profile.nonce_domain,
+                "uri": profile.nonce_uri,
+                "statement": profile.nonce_statement,
+                "message": message,
             }
         )
 
