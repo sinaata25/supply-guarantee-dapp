@@ -30,7 +30,9 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
-LOCAL_APPS = []
+LOCAL_APPS = [
+    "accounts.apps.AccountsConfig",
+]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
@@ -126,13 +128,20 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 
+# Local media (uploaded photos)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-
 SPECTACULAR_SETTINGS = {
-    "TITLE": "My Centralize API",
-    "DESCRIPTION": "My Django REST API documentation",
+    "TITLE": "My API",
     "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
