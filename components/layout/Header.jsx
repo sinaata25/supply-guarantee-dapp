@@ -12,13 +12,13 @@ export default function Header() {
     isConnecting,
     connect,
     switchToTargetChain,
-    disconnect, // 👈 اگر اسمش فرق داره تغییر بده
+    disconnect, 
   } = useWeb3();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // بستن دراپ‌داون با کلیک بیرون
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
