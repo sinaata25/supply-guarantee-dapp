@@ -49,7 +49,7 @@ export default function Header() {
           <Link href="how-it-works" className="hover:text-black transition">
             How it works
           </Link>
-          <Link href="#features" className="hover:text-black transition">
+          <Link href="features" className="hover:text-black transition">
             Features
           </Link>
           <Link href="security" className="hover:text-black transition">
