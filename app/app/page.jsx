@@ -338,13 +338,11 @@ export default function AppDashboardPage() {
             ) : (
               <div className="grid">
                 {filtered.map((o) => (
-                  <OrderCard
-                    key={`order-${o.orderId}`}
-                    o={o}
-                    onOpen={() => {
-                      console.log("View more order:", o.orderId);
-                    }}
-                  />
+<OrderCard
+  key={`order-${o.orderId}`}
+  o={o}
+  onOpen={() => router.push(`/app/orders/${o.orderId}`)}
+/>
                 ))}
               </div>
             )}
