@@ -129,3 +129,10 @@ STATIC_URL = "static/"
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "My Centralize API",
+    "DESCRIPTION": "My Django REST API documentation",
+    "VERSION": "1.0.0",
+}
