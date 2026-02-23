@@ -1,7 +1,15 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { ethers } from "ethers";
+
 import {
   connectWallet,
   ensureCorrectChain,
@@ -14,7 +22,32 @@ import {
 } from "@/lib/web3";
 import { WEB3_CONFIG } from "@/lib/web3/config";
 
+// ✅ این 3 تا تابع رو از فایل api که ساختیم ایمپورت کن
+// مسیرش رو مطابق پروژه خودت تنظیم کن.
+// مثال: اگر گذاشتی تو lib/api.js → "@/lib/api"
+import { requestNonce, verifySignature, getMe } from "@/lib/api";
+
 const Web3Context = createContext(null);
+
+function safeLoadAccessToken() {
+  try {
+    return localStorage.getItem("accessToken") || "";
+  } catch {
+    return "";
+  }
+}
+
+function safeSaveAccessToken(token) {
+  try {
+    localStorage.setItem("accessToken", token);
+  } catch {}
+}
+
+function safeClearAccessToken() {
+  try {
+    localStorage.removeItem("accessToken");
+  } catch {}
+}
 
 export function Web3Provider({ children }) {
   const [account, setAccount] = useState("");
@@ -30,12 +63,22 @@ export function Web3Provider({ children }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState("");
 
+  // ✅ Auth/Profile state
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const [profile, setProfile] = useState(null);
+
+  // load access token once on mount
+  useEffect(() => {
+    setAccessToken(safeLoadAccessToken());
+  }, []);
+
   const refresh = useCallback(async () => {
     setError("");
     try {
       const eth = getEthereum();
       if (!eth) {
-        // no wallet: still mark ready so UI can show "Install MetaMask"
+        // no wallet
         setAccount("");
         setChainId(null);
         setIsCorrectChain(false);
@@ -43,6 +86,9 @@ export function Web3Provider({ children }) {
         setSigner(null);
         setContracts({ sg: null, token: null });
         setIsReady(true);
+
+        // also clear auth/profile
+        setProfile(null);
         return;
       }
 
@@ -62,11 +108,9 @@ export function Web3Provider({ children }) {
       if (acc) {
         const s = await p.getSigner();
         setSigner(s);
-        // read+write contracts via signer
         setContracts(getContracts(s));
       } else {
         setSigner(null);
-        // read-only contracts via provider
         setContracts(getContracts(p));
       }
 
@@ -82,13 +126,14 @@ export function Web3Provider({ children }) {
     setError("");
     try {
       await connectWallet();
-      // ensure chain after connect
+
       const chk = await ensureCorrectChain();
       if (!chk.ok) {
         throw new Error(
           `Wrong network. Please switch to chainId ${WEB3_CONFIG.chainId} (target), current=${chk.current}`
         );
       }
+
       await refresh();
     } catch (e) {
       setError(e?.message || "Connect failed");
@@ -97,12 +142,67 @@ export function Web3Provider({ children }) {
     }
   }, [refresh]);
 
-  // Soft disconnect: we cannot force MetaMask to disconnect programmatically
-  // but we can clear app state.
+  // ✅ Login with SIWE-style flow:
+  // POST /api/accounts/auth/nonce/ -> sign message -> POST /api/accounts/auth/verify/
+  // then GET /api/accounts/me/
+  const login = useCallback(async () => {
+    if (!provider) throw new Error("No provider");
+    if (!account) throw new Error("No account connected");
+
+    setIsAuthLoading(true);
+    setError("");
+
+    try {
+      // 1) chain id
+      const cid = await getChainId();
+      const chain = cid ?? WEB3_CONFIG.chainId;
+
+      // 2) request nonce+message from backend
+      const nonceRes = await requestNonce(account, chain);
+
+      // 3) sign the exact message
+      const s = await provider.getSigner();
+      const signature = await s.signMessage(nonceRes.message);
+
+      // 4) verify -> jwt
+      const tokens = await verifySignature(account, signature);
+
+      // ✅ save access token
+      setAccessToken(tokens.access);
+      safeSaveAccessToken(tokens.access);
+
+      // 5) fetch profile
+      const me = await getMe(tokens.access);
+      setProfile(me);
+
+      return me;
+    } catch (e) {
+      setProfile(null);
+      setAccessToken("");
+      safeClearAccessToken();
+      setError(e?.message || "Auth failed");
+      throw e;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, [provider, account]);
+
+  const logout = useCallback(() => {
+    setProfile(null);
+    setAccessToken("");
+    safeClearAccessToken();
+  }, []);
+
+  // Soft disconnect (wallet itself disconnect نمی‌شود)
   const disconnect = useCallback(() => {
     setAccount("");
     setSigner(null);
     setError("");
+    setProfile(null);
+
+    // ✅ logout on disconnect
+    logout();
+
     // keep provider for read-only if possible
     try {
       const eth = getEthereum();
@@ -118,7 +218,7 @@ export function Web3Provider({ children }) {
       setProvider(null);
       setContracts({ sg: null, token: null });
     }
-  }, []);
+  }, [logout]);
 
   const switchToTargetChain = useCallback(async () => {
     setError("");
@@ -133,6 +233,7 @@ export function Web3Provider({ children }) {
     }
   }, [refresh]);
 
+  // init + wallet events
   useEffect(() => {
     refresh();
     const unsub = onWalletEvents({
@@ -142,6 +243,27 @@ export function Web3Provider({ children }) {
     });
     return () => unsub();
   }, [refresh]);
+
+  // ✅ وقتی account وصل شد: اتومات login کن (اگر دوست نداری، این useEffect رو حذف کن)
+  useEffect(() => {
+    if (!account || !provider) return;
+    // فقط اگر پروفایل نداریم لاگین کنیم
+    if (!profile) {
+      login().catch(() => {});
+    }
+  }, [account, provider, profile, login]);
+
+  // ✅ اگر accessToken داریم ولی profile نداریم، یکبار /me رو بزن
+  useEffect(() => {
+    if (!accessToken || profile) return;
+
+    getMe(accessToken)
+      .then((me) => setProfile(me))
+      .catch(() => {
+        // توکن منقضی/خراب
+        logout();
+      });
+  }, [accessToken, profile, logout]);
 
   const value = useMemo(
     () => ({
@@ -158,11 +280,20 @@ export function Web3Provider({ children }) {
       signer,
       contracts,
 
+      // ✅ auth/profile
+      isAuthLoading,
+      accessToken,
+      profile,
+
       // actions
       connect,
       disconnect,
       refresh,
       switchToTargetChain,
+
+      // ✅ auth actions
+      login,
+      logout,
 
       // utils
       ethers,
@@ -177,10 +308,15 @@ export function Web3Provider({ children }) {
       provider,
       signer,
       contracts,
+      isAuthLoading,
+      accessToken,
+      profile,
       connect,
       disconnect,
       refresh,
       switchToTargetChain,
+      login,
+      logout,
     ]
   );
 
