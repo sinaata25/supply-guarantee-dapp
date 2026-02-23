@@ -32,6 +32,11 @@ import { toBytes32Label } from "@/lib/web3/bytes";
 const ZERO = "0x0000000000000000000000000000000000000000";
 const TOKEN_DECIMALS = 18;
 
+// --- API base (هماهنگ با lib/api.js شما) ---
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000/";
+const API_PREFIX = "api/accounts/";
+
 function cx(...a) {
   return a.filter(Boolean).join(" ");
 }
@@ -49,6 +54,59 @@ async function copyToClipboard(text) {
   } catch {
     return false;
   }
+}
+
+/* ---------- Autocomplete helpers ---------- */
+
+function normalize(s) {
+  return (s || "").trim().toLowerCase();
+}
+
+function isLikelyWalletQuery(q) {
+  const x = normalize(q);
+  return x.startsWith("0x") || /^[0-9a-fx]+$/i.test(x);
+}
+
+function useDebouncedValue(value, delayMs = 180) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+async function parseError(res) {
+  try {
+    const data = await res.json();
+    return data?.detail || JSON.stringify(data);
+  } catch {
+    try {
+      return await res.text();
+    } catch {
+      return "Unknown error";
+    }
+  }
+}
+
+async function fetchMeAll(token) {
+  const res = await fetch(`${API_BASE}${API_PREFIX}me/all/`, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    // اگر بک‌اند شما به کوکی/سشن متکیه این رو فعال کن
+    // credentials: "include",
+  });
+
+  if (!res.ok) {
+    const msg = await parseError(res);
+    throw new Error(`Get accounts failed: ${msg}`);
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 /* ---------- Unix & Date helpers ---------- */
@@ -180,7 +238,9 @@ function CardHeader({ title, subtitle, right }) {
       <div className={styles.cardHeaderRow}>
         <div style={{ minWidth: 0 }}>
           <div className={styles.cardTitle}>{title}</div>
-          {subtitle ? <div className={styles.cardSubtitle}>{subtitle}</div> : null}
+          {subtitle ? (
+            <div className={styles.cardSubtitle}>{subtitle}</div>
+          ) : null}
         </div>
         {right ? <div style={{ flexShrink: 0 }}>{right}</div> : null}
       </div>
@@ -198,7 +258,9 @@ function SectionCard({ title, subtitle, children, className }) {
       {title || subtitle ? (
         <div style={{ marginBottom: 12 }}>
           {title ? <div className={styles.sectionTitle}>{title}</div> : null}
-          {subtitle ? <div className={styles.sectionSubtitle}>{subtitle}</div> : null}
+          {subtitle ? (
+            <div className={styles.sectionSubtitle}>{subtitle}</div>
+          ) : null}
         </div>
       ) : null}
       {children}
@@ -243,7 +305,9 @@ function Field({ label, hint, error, children, rightSlot }) {
         <label className={styles.label}>{label}</label>
         <div className={styles.hintRow}>
           {hint ? <span className={styles.hint}>{hint}</span> : null}
-          {rightSlot ? <span style={{ flexShrink: 0 }}>{rightSlot}</span> : null}
+          {rightSlot ? (
+            <span style={{ flexShrink: 0 }}>{rightSlot}</span>
+          ) : null}
         </div>
       </div>
       {children}
@@ -260,12 +324,20 @@ function Input({
   autoComplete,
   error,
   mono,
+  onFocus,
+  onBlur,
 }) {
   return (
     <input
-      className={cx(styles.input, error && styles.inputError, mono && styles.inputMono)}
+      className={cx(
+        styles.input,
+        error && styles.inputError,
+        mono && styles.inputMono
+      )}
       value={value}
       onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
       placeholder={placeholder}
       inputMode={inputMode}
       autoComplete={autoComplete}
@@ -286,7 +358,9 @@ function ButtonPrimary({ children, onClick, disabled, loading, className }) {
       )}
       type="button"
     >
-      {loading ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : null}
+      {loading ? (
+        <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+      ) : null}
       {children}
     </button>
   );
@@ -297,7 +371,12 @@ function ButtonSecondary({ children, onClick, disabled, className }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={cx(styles.btn, styles.btnSecondary, disabled && styles.btnDisabled, className)}
+      className={cx(
+        styles.btn,
+        styles.btnSecondary,
+        disabled && styles.btnDisabled,
+        className
+      )}
       type="button"
     >
       {children}
@@ -353,17 +432,37 @@ function DeadlineField({ label = "Deadline", value, onChange }) {
             boxShadow: "0 1px 0 rgba(2,6,23,0.05)",
           }}
         >
-          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              justifyContent: "flex-end",
+            }}
+          >
             <button
               type="button"
               onClick={openPicker}
               className={cx(styles.btn, styles.btnSecondary)}
-              style={{ padding: "10px 14px", borderRadius: 14, minHeight: 40, width: "100%", justifyContent: "center" }}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 14,
+                minHeight: 40,
+                width: "100%",
+                justifyContent: "center",
+              }}
               title="Pick date"
             >
               <Calendar size={18} />
               {hasDate ? (
-                <span style={{ maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span
+                  style={{
+                    maxWidth: 360,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {pretty}
                 </span>
               ) : (
@@ -376,7 +475,13 @@ function DeadlineField({ label = "Deadline", value, onChange }) {
                 type="button"
                 onClick={() => onChange("0")}
                 className={cx(styles.btn, styles.btnSecondary)}
-                style={{ width: 44, height: 44, padding: 0, borderRadius: 14, flexShrink: 0 }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: 14,
+                  flexShrink: 0,
+                }}
                 title="Clear"
               >
                 <X size={18} />
@@ -428,8 +533,23 @@ function MiniStat({ label, value, copyable }) {
         overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(2,6,23,0.55)" }}>{label}</div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 900,
+            color: "rgba(2,6,23,0.55)",
+          }}
+        >
+          {label}
+        </div>
 
         {copyable && value && value !== "—" ? (
           <button
@@ -458,7 +578,9 @@ function MiniStat({ label, value, copyable }) {
           fontWeight: 900,
           color: "rgba(2,6,23,0.92)",
           wordBreak: "break-all",
-          fontFamily: copyable ? "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" : undefined,
+          fontFamily: copyable
+            ? "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+            : undefined,
         }}
         title={copyable ? value : undefined}
       >
@@ -477,7 +599,9 @@ function StepPill({ state, idx, label, onClick }) {
       <span className={cx(styles.stepDot, active && styles.stepDotActive)}>
         {state === "done" ? "✓" : idx}
       </span>
-      <span className={cx(styles.stepLabel, active && styles.stepLabelActive)}>{label}</span>
+      <span className={cx(styles.stepLabel, active && styles.stepLabelActive)}>
+        {label}
+      </span>
     </button>
   );
 }
@@ -535,13 +659,133 @@ function WizardTop({ step, setStep, steps }) {
   );
 }
 
+/* ---------- Autocomplete Component for Address Fields ---------- */
+
+function AddressAutocomplete({
+  label,
+  hint,
+  value,
+  setValue,
+  error,
+  accounts,
+  loading,
+  minChars = 2,
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const wrapRef = useRef(null);
+
+  const debounced = useDebouncedValue(value, 160);
+
+  const suggestions = useMemo(() => {
+    const q = normalize(debounced);
+    if (!q || q.length < minChars) return [];
+
+    // سرچ ترکیبی: هم wallet هم email
+    // اگر کاربر مثل wallet تایپ کرد (0x...) همون هم کار می‌کنه
+    return accounts
+      .filter((a) => {
+        const w = normalize(a.wallet_address);
+        const em = normalize(a.email);
+        return w.includes(q) || em.includes(q);
+      })
+      .slice(0, 8);
+  }, [accounts, debounced, minChars]);
+
+  const show = open && suggestions.length > 0;
+
+  useEffect(() => {
+    function onDocMouseDown(e) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  function pick(item) {
+    setValue(item.wallet_address || "");
+    setOpen(false);
+    setActiveIdx(-1);
+  }
+
+  return (
+    <div ref={wrapRef} className={styles.autoWrap}>
+      <Field
+        label={label}
+        hint={loading ? "Loading…" : hint}
+        error={error}
+        rightSlot={
+          loading ? (
+            <span style={{ fontSize: 12, opacity: 0.65 }}>loading</span>
+          ) : null
+        }
+      >
+        <Input
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setOpen(true);
+            setActiveIdx(-1);
+          }}
+          onFocus={() => {
+            setOpen(true);
+          }}
+          onBlur={() => {
+            // با کلیک روی suggestion blur می‌خوره؛ برای همین نمی‌بندیم اینجا
+            // بستن با کلیک بیرون handle میشه
+          }}
+          placeholder="0x... or email..."
+          autoComplete="new-password"
+          inputMode="text"
+          error={error}
+          mono
+        />
+      </Field>
+
+      {show ? (
+        <div className={styles.suggestBox} role="listbox">
+          {suggestions.map((a, idx) => (
+            <button
+              type="button"
+              key={`${a.wallet_address}|${a.email}|${idx}`}
+              className={cx(
+                styles.suggestItem,
+                idx === activeIdx && styles.suggestItemActive
+              )}
+              onMouseEnter={() => setActiveIdx(idx)}
+              onMouseDown={(e) => {
+                // مهم: جلوگیری از blur قبل از pick
+                e.preventDefault();
+                pick(a);
+              }}
+            >
+              <div className={styles.suggestMain}>{a.wallet_address}</div>
+              {a.email ? (
+                <div className={styles.suggestSub}>{a.email}</div>
+              ) : (
+                <div className={cx(styles.suggestSub, styles.suggestSubMuted)}>
+                   
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+
+    </div>
+  );
+}
+
 /* ---------- Page ---------- */
 
 export default function NewOrderPage() {
   const router = useRouter();
   const redirectTimerRef = useRef(null);
 
-  const { account, isCorrectChain, connect, switchToTargetChain, contracts } = useWeb3();
+  const { account, isCorrectChain, connect, switchToTargetChain, contracts } =
+    useWeb3();
 
   const steps = useMemo(
     () => [
@@ -575,9 +819,30 @@ export default function NewOrderPage() {
   const [advanceApprovalBy, setAdvanceApprovalBy] = useState("0");
 
   const [milestones, setMilestones] = useState([
-    { name: "m1", bps: "3000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
-    { name: "m2", bps: "3000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
-    { name: "m3", bps: "2000", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
+    {
+      name: "m1",
+      bps: "3000",
+      planBy: "0",
+      deliveryBy: "0",
+      inspectionBy: "0",
+      buyerApprovalBy: "0",
+    },
+    {
+      name: "m2",
+      bps: "3000",
+      planBy: "0",
+      deliveryBy: "0",
+      inspectionBy: "0",
+      buyerApprovalBy: "0",
+    },
+    {
+      name: "m3",
+      bps: "2000",
+      planBy: "0",
+      deliveryBy: "0",
+      inspectionBy: "0",
+      buyerApprovalBy: "0",
+    },
   ]);
 
   const [milestonePercents, setMilestonePercents] = useState(() => [
@@ -587,6 +852,39 @@ export default function NewOrderPage() {
   ]);
 
   const [orderId, setOrderId] = useState("");
+
+  // --- accounts state for autocomplete ---
+  const [accounts, setAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState("");
+
+  // ✅ Fetch accounts on page load
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setAccountsLoading(true);
+      setAccountsError("");
+      try {
+        // اگر توکن رو جای دیگه نگه می‌داری، اینو تغییر بده
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+        const data = await fetchMeAll(token);
+        if (!cancelled) setAccounts(data);
+      } catch (e) {
+        if (!cancelled)
+          setAccountsError(e?.message || "Failed to load accounts");
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -613,7 +911,8 @@ export default function NewOrderPage() {
         const should = bpsToPercentString(milestones[i].bps);
         if (
           next[i] === "" ||
-          Number(sanitizeNumberString(next[i])) * 100 !== Number(milestones[i].bps)
+          Number(sanitizeNumberString(next[i])) * 100 !==
+            Number(milestones[i].bps)
         ) {
           next[i] = should;
         }
@@ -632,7 +931,8 @@ export default function NewOrderPage() {
     [advanceBps, milestonesTotalBps]
   );
 
-  const canWrite = !!contracts?.sg && !!contracts?.token && !!account && isCorrectChain;
+  const canWrite =
+    !!contracts?.sg && !!contracts?.token && !!account && isCorrectChain;
 
   const bpsOk = totalBps === 10000;
   const bpsChipKind = bpsOk ? "good" : "bad";
@@ -681,7 +981,8 @@ export default function NewOrderPage() {
     }
 
     const p = Number(sanitizeNumberString(advancePercent));
-    if (Number.isNaN(p) || p < 0 || p > 100) fe.advanceBps = "Advance must be between 0 and 100%.";
+    if (Number.isNaN(p) || p < 0 || p > 100)
+      fe.advanceBps = "Advance must be between 0 and 100%.";
 
     setFieldErrors(fe);
     if (Object.keys(fe).length) throw new Error("Please fix the highlighted fields.");
@@ -715,7 +1016,14 @@ export default function NewOrderPage() {
   function addMilestoneRow() {
     setMilestones((prev) => [
       ...prev,
-      { name: `m${prev.length + 1}`, bps: "0", planBy: "0", deliveryBy: "0", inspectionBy: "0", buyerApprovalBy: "0" },
+      {
+        name: `m${prev.length + 1}`,
+        bps: "0",
+        planBy: "0",
+        deliveryBy: "0",
+        inspectionBy: "0",
+        buyerApprovalBy: "0",
+      },
     ]);
     setMilestonePercents((prev) => [...prev, "0"]);
   }
@@ -726,7 +1034,9 @@ export default function NewOrderPage() {
   }
 
   function updateMilestone(idx, key, value) {
-    setMilestones((prev) => prev.map((m, i) => (i === idx ? { ...m, [key]: value } : m)));
+    setMilestones((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [key]: value } : m))
+    );
   }
 
   function updateMilestonePercent(idx, percentStr) {
@@ -764,7 +1074,9 @@ export default function NewOrderPage() {
   async function handleCreateAndLock() {
     createRunRef.current += 1;
     const runId = createRunRef.current;
-    console.log(`\n🟦 [Create&Lock] CLICK runId=${runId} busy=${busy} inFlight=${inFlightRef.current}`);
+    console.log(
+      `\n🟦 [Create&Lock] CLICK runId=${runId} busy=${busy} inFlight=${inFlightRef.current}`
+    );
 
     if (inFlightRef.current) {
       console.warn(`🟨 [Create&Lock] BLOCKED (already inFlight) runId=${runId}`);
@@ -836,7 +1148,12 @@ export default function NewOrderPage() {
         ];
 
         setStatus(`Adding milestone ${i + 1}/${milestones.length}… confirm in wallet.`);
-        const txM = await contracts.sg.addMilestone(BigInt(createdId), name32, Number(m.bps), dl);
+        const txM = await contracts.sg.addMilestone(
+          BigInt(createdId),
+          name32,
+          Number(m.bps),
+          dl
+        );
         await txM.wait();
       }
 
@@ -845,7 +1162,9 @@ export default function NewOrderPage() {
       await txLock.wait();
 
       const elapsedMs = Date.now() - startedAt;
-      console.log(`✅✅ [Create&Lock] DONE runId=${runId} elapsedMs=${elapsedMs}`, { orderId: createdId });
+      console.log(`✅✅ [Create&Lock] DONE runId=${runId} elapsedMs=${elapsedMs}`, {
+        orderId: createdId,
+      });
 
       setStatus(`Created & locked ✅ orderId=${createdId}. Redirecting to home…`);
       router.push("/");
@@ -927,6 +1246,12 @@ export default function NewOrderPage() {
         <WizardTop step={step} setStep={setStep} steps={steps} />
 
         <div className={styles.stack12} style={{ marginBottom: 24 }}>
+          {accountsError ? (
+            <InlineBanner kind="error" title="Accounts autocomplete error">
+              {accountsError}
+            </InlineBanner>
+          ) : null}
+
           {status ? (
             <InlineBanner kind="success" title="Status">
               {status}
@@ -939,7 +1264,7 @@ export default function NewOrderPage() {
           ) : null}
         </div>
 
-        {/* Main Column Only (you can add sidebar later) */}
+        {/* Main Column Only */}
         <div style={{ display: "grid", gap: 22 }}>
           {/* Step 1 */}
           {step === 1 ? (
@@ -953,29 +1278,71 @@ export default function NewOrderPage() {
                 <div className={styles.grid2}>
                   <SectionCard title="Parties" subtitle="Addresses that define the order participants">
                     <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-                      <Field label="Buyer" error={fieldErrors.buyer} hint="0x…">
-                        <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.buyer} mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Buyer"
+                        hint="0x… or email…"
+                        value={buyer}
+                        setValue={setBuyer}
+                        error={fieldErrors.buyer}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
 
-                      <Field label="Seller" error={fieldErrors.seller} hint="0x…">
-                        <Input value={seller} onChange={(e) => setSeller(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.seller} mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Seller"
+                        hint="0x… or email…"
+                        value={seller}
+                        setValue={setSeller}
+                        error={fieldErrors.seller}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
 
-                      <Field label="Bank" error={fieldErrors.bank} hint="0x…">
-                        <Input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.bank} mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Bank"
+                        hint="0x… or email…"
+                        value={bank}
+                        setValue={setBank}
+                        error={fieldErrors.bank}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
 
-                      <Field label="Inspector (required)" error={fieldErrors.inspector} hint="0x…">
-                        <Input value={inspector} onChange={(e) => setInspector(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.inspector} mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Inspector (required)"
+                        hint="0x… or email…"
+                        value={inspector}
+                        setValue={setInspector}
+                        error={fieldErrors.inspector}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
 
-                      <Field label="Carrier (optional)" hint="0x… or empty">
-                        <Input value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="0x... or empty" autoComplete="off" mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Carrier (optional)"
+                        hint="0x… or email…"
+                        value={carrier}
+                        setValue={setCarrier}
+                        error={fieldErrors.carrier}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
 
-                      <Field label="Arbiter (optional)" hint="0x… or empty">
-                        <Input value={arbiter} onChange={(e) => setArbiter(e.target.value)} placeholder="0x... or empty" autoComplete="off" mono />
-                      </Field>
+                      <AddressAutocomplete
+                        label="Arbiter (optional)"
+                        hint="0x… or email…"
+                        value={arbiter}
+                        setValue={setArbiter}
+                        error={fieldErrors.arbiter}
+                        accounts={accounts}
+                        loading={accountsLoading}
+                        minChars={2}
+                      />
                     </div>
                   </SectionCard>
 
@@ -985,7 +1352,14 @@ export default function NewOrderPage() {
                   >
                     <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
                       <Field label="Token" error={fieldErrors.token} hint="from env by default">
-                        <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder="0x..." autoComplete="off" error={fieldErrors.token} mono />
+                        <Input
+                          value={token}
+                          onChange={(e) => setToken(e.target.value)}
+                          placeholder="0x..."
+                          autoComplete="off"
+                          error={fieldErrors.token}
+                          mono
+                        />
                       </Field>
 
                       <Field
@@ -1002,7 +1376,14 @@ export default function NewOrderPage() {
                           )
                         }
                       >
-                        <Input value={priceHuman} onChange={(e) => setPriceHuman(e.target.value)} placeholder="0.0" inputMode="decimal" autoComplete="off" error={fieldErrors.priceHuman} />
+                        <Input
+                          value={priceHuman}
+                          onChange={(e) => setPriceHuman(e.target.value)}
+                          placeholder="0.0"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          error={fieldErrors.priceHuman}
+                        />
                       </Field>
 
                       <Field
@@ -1011,11 +1392,22 @@ export default function NewOrderPage() {
                         error={fieldErrors.advanceBps}
                         rightSlot={<span style={{ fontSize: 12, opacity: 0.65 }}>{advanceBps} bps</span>}
                       >
-                        <Input value={advancePercent} onChange={(e) => setAdvancePercent(e.target.value)} placeholder="20" inputMode="decimal" autoComplete="off" error={fieldErrors.advanceBps} />
+                        <Input
+                          value={advancePercent}
+                          onChange={(e) => setAdvancePercent(e.target.value)}
+                          placeholder="20"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          error={fieldErrors.advanceBps}
+                        />
                       </Field>
 
                       <div style={{ gridColumn: "1 / -1" }}>
-                        <DeadlineField label="Advance approval deadline" value={advanceApprovalBy} onChange={setAdvanceApprovalBy} />
+                        <DeadlineField
+                          label="Advance approval deadline"
+                          value={advanceApprovalBy}
+                          onChange={setAdvanceApprovalBy}
+                        />
                       </div>
                     </div>
                   </SectionCard>
@@ -1145,7 +1537,9 @@ export default function NewOrderPage() {
                   </Chip>
 
                   {fieldErrors.bpsTotal ? (
-                    <span style={{ fontSize: 12, color: "rgb(220,38,38)", fontWeight: 900 }}>{fieldErrors.bpsTotal}</span>
+                    <span style={{ fontSize: 12, color: "rgb(220,38,38)", fontWeight: 900 }}>
+                      {fieldErrors.bpsTotal}
+                    </span>
                   ) : null}
 
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -1240,9 +1634,15 @@ export default function NewOrderPage() {
 
                 <div style={{ marginTop: 14 }}>
                   <InlineBanner kind="info" title="What will happen">
-                    This triggers <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>token.approve()</span>{" "}
+                    This triggers{" "}
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
+                      token.approve()
+                    </span>{" "}
                     and then{" "}
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>sg.fund()</span>.
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
+                      sg.fund()
+                    </span>
+                    .
                   </InlineBanner>
                 </div>
 
