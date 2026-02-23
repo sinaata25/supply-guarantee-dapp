@@ -22,6 +22,7 @@ from .serializers import (
     VerifySerializer,
     TokenPairSerializer,
     ProfileSerializer,
+    PublicProfileSerializer,
 )
 
 User = get_user_model()
@@ -224,3 +225,21 @@ class MeView(APIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
+
+
+class ProfileListView(APIView):
+    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        tags=["Profile"],
+        responses={200: PublicProfileSerializer(many=True)},
+        summary="List all profiles (basic info only)",
+    )
+    def get(self, request):
+        profiles = Profile.objects.all().only(
+            "wallet_address",
+            "email",
+        )
+        serializer = PublicProfileSerializer(profiles, many=True)
+        return Response(serializer.data)

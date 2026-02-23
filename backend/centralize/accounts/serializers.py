@@ -45,3 +45,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             "bio",
         ]
         read_only_fields = ["wallet_address"]
+
+
+class PublicProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ["wallet_address", "email"]
