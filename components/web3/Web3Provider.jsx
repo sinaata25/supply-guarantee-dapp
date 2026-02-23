@@ -9,7 +9,6 @@ import React, {
   useState,
 } from "react";
 import { ethers } from "ethers";
-
 import {
   connectWallet,
   ensureCorrectChain,
@@ -22,34 +21,33 @@ import {
 } from "@/lib/web3";
 import { WEB3_CONFIG } from "@/lib/web3/config";
 
-// ✅ این 3 تا تابع رو از فایل api که ساختیم ایمپورت کن
-// مسیرش رو مطابق پروژه خودت تنظیم کن.
-// مثال: اگر گذاشتی تو lib/api.js → "@/lib/api"
+// ✅ مسیر را مطابق پروژه‌ات درست کن
 import { requestNonce, verifySignature, getMe } from "@/lib/api";
 
 const Web3Context = createContext(null);
 
-function safeLoadAccessToken() {
+function safeGet(key, fallback = "") {
   try {
-    return localStorage.getItem("accessToken") || "";
+    return localStorage.getItem(key) || fallback;
   } catch {
-    return "";
+    return fallback;
   }
 }
 
-function safeSaveAccessToken(token) {
+function safeSet(key, value) {
   try {
-    localStorage.setItem("accessToken", token);
+    localStorage.setItem(key, value);
   } catch {}
 }
 
-function safeClearAccessToken() {
+function safeDel(key) {
   try {
-    localStorage.removeItem("accessToken");
+    localStorage.removeItem(key);
   } catch {}
 }
 
 export function Web3Provider({ children }) {
+  // ---- Web3 state ----
   const [account, setAccount] = useState("");
   const [chainId, setChainId] = useState(null);
   const [isCorrectChain, setIsCorrectChain] = useState(false);
@@ -63,32 +61,30 @@ export function Web3Provider({ children }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ Auth/Profile state
+  // ---- Auth/Profile state ----
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [accessToken, setAccessToken] = useState("");
   const [profile, setProfile] = useState(null);
 
-  // load access token once on mount
+  // Load token once
   useEffect(() => {
-    setAccessToken(safeLoadAccessToken());
+    setAccessToken(safeGet("accessToken", ""));
   }, []);
 
+  // ---- refresh wallet state (NO sign, NO popup) ----
   const refresh = useCallback(async () => {
     setError("");
     try {
       const eth = getEthereum();
       if (!eth) {
-        // no wallet
         setAccount("");
         setChainId(null);
         setIsCorrectChain(false);
         setProvider(null);
         setSigner(null);
         setContracts({ sg: null, token: null });
-        setIsReady(true);
-
-        // also clear auth/profile
         setProfile(null);
+        setIsReady(true);
         return;
       }
 
@@ -121,6 +117,7 @@ export function Web3Provider({ children }) {
     }
   }, []);
 
+  // ---- connect wallet (still NO sign) ----
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError("");
@@ -142,65 +139,20 @@ export function Web3Provider({ children }) {
     }
   }, [refresh]);
 
-  // ✅ Login with SIWE-style flow:
-  // POST /api/accounts/auth/nonce/ -> sign message -> POST /api/accounts/auth/verify/
-  // then GET /api/accounts/me/
-  const login = useCallback(async () => {
-    if (!provider) throw new Error("No provider");
-    if (!account) throw new Error("No account connected");
-
-    setIsAuthLoading(true);
-    setError("");
-
-    try {
-      // 1) chain id
-      const cid = await getChainId();
-      const chain = cid ?? WEB3_CONFIG.chainId;
-
-      // 2) request nonce+message from backend
-      const nonceRes = await requestNonce(account, chain);
-
-      // 3) sign the exact message
-      const s = await provider.getSigner();
-      const signature = await s.signMessage(nonceRes.message);
-
-      // 4) verify -> jwt
-      const tokens = await verifySignature(account, signature);
-
-      // ✅ save access token
-      setAccessToken(tokens.access);
-      safeSaveAccessToken(tokens.access);
-
-      // 5) fetch profile
-      const me = await getMe(tokens.access);
-      setProfile(me);
-
-      return me;
-    } catch (e) {
-      setProfile(null);
-      setAccessToken("");
-      safeClearAccessToken();
-      setError(e?.message || "Auth failed");
-      throw e;
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }, [provider, account]);
-
+  // ---- logout (clear tokens/profile, NO wallet disconnect) ----
   const logout = useCallback(() => {
     setProfile(null);
     setAccessToken("");
-    safeClearAccessToken();
+    safeDel("accessToken");
   }, []);
 
-  // Soft disconnect (wallet itself disconnect نمی‌شود)
+  // Soft disconnect (clear app state)
   const disconnect = useCallback(() => {
     setAccount("");
     setSigner(null);
     setError("");
-    setProfile(null);
 
-    // ✅ logout on disconnect
+    // also logout
     logout();
 
     // keep provider for read-only if possible
@@ -224,52 +176,95 @@ export function Web3Provider({ children }) {
     setError("");
     try {
       const chk = await ensureCorrectChain();
-      if (!chk.ok) {
-        throw new Error("Failed to switch network in wallet");
-      }
+      if (!chk.ok) throw new Error("Failed to switch network in wallet");
       await refresh();
     } catch (e) {
       setError(e?.message || "Switch network failed");
     }
   }, [refresh]);
 
-  // init + wallet events
-  useEffect(() => {
-    refresh();
-    const unsub = onWalletEvents({
-      onAccountsChanged: () => refresh(),
-      onChainChanged: () => refresh(),
-      onDisconnect: () => refresh(),
-    });
-    return () => unsub();
-  }, [refresh]);
-
-  // ✅ وقتی account وصل شد: اتومات login کن (اگر دوست نداری، این useEffect رو حذف کن)
-  useEffect(() => {
-    if (!account || !provider) return;
-    // فقط اگر پروفایل نداریم لاگین کنیم
-    if (!profile) {
-      login().catch(() => {});
+  // ---- login (THIS triggers MetaMask popup because it signs) ----
+  // ✅ فقط وقتی کاربر کلیک می‌کند صدا بزن (نه auto on refresh)
+  const login = useCallback(async () => {
+    if (!provider) throw new Error("No provider");
+    if (!account) throw new Error("Wallet not connected");
+    if (!isCorrectChain) {
+      throw new Error(`Wrong network. Please switch to chainId ${WEB3_CONFIG.chainId}`);
     }
-  }, [account, provider, profile, login]);
 
-  // ✅ اگر accessToken داریم ولی profile نداریم، یکبار /me رو بزن
+    setIsAuthLoading(true);
+    setError("");
+
+    try {
+      const chain = chainId ?? WEB3_CONFIG.chainId;
+
+      // 1) nonce/message
+      const nonceRes = await requestNonce(account, chain);
+
+      // 2) sign
+      const s = await provider.getSigner();
+      const signature = await s.signMessage(nonceRes.message);
+
+      // 3) verify -> tokens
+      const tokens = await verifySignature(account, signature);
+
+      setAccessToken(tokens.access);
+      safeSet("accessToken", tokens.access);
+
+      // 4) me
+      const me = await getMe(tokens.access);
+      setProfile(me);
+
+      return me;
+    } catch (e) {
+      logout();
+      setError(e?.message || "Auth failed");
+      throw e;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, [provider, account, chainId, isCorrectChain, logout]);
+
+  // ---- Load profile using existing token (NO sign, NO popup) ----
   useEffect(() => {
     if (!accessToken || profile) return;
 
     getMe(accessToken)
       .then((me) => setProfile(me))
       .catch(() => {
-        // توکن منقضی/خراب
+        // token invalid/expired -> clear and require manual login
         logout();
       });
   }, [accessToken, profile, logout]);
+
+  // init + wallet events
+  useEffect(() => {
+    refresh();
+    const unsub = onWalletEvents({
+      onAccountsChanged: () => {
+        // account changed -> clear auth, then refresh
+        logout();
+        refresh();
+      },
+      onChainChanged: () => {
+        // chain changed -> clear auth, then refresh
+        logout();
+        refresh();
+      },
+      onDisconnect: () => {
+        logout();
+        refresh();
+      },
+    });
+    return () => unsub();
+  }, [refresh, logout]);
 
   const value = useMemo(
     () => ({
       // state
       isReady,
       isConnecting,
+      isAuthLoading,
       error,
 
       account,
@@ -280,8 +275,7 @@ export function Web3Provider({ children }) {
       signer,
       contracts,
 
-      // ✅ auth/profile
-      isAuthLoading,
+      // auth/profile
       accessToken,
       profile,
 
@@ -291,7 +285,7 @@ export function Web3Provider({ children }) {
       refresh,
       switchToTargetChain,
 
-      // ✅ auth actions
+      // auth actions
       login,
       logout,
 
@@ -301,6 +295,7 @@ export function Web3Provider({ children }) {
     [
       isReady,
       isConnecting,
+      isAuthLoading,
       error,
       account,
       chainId,
@@ -308,7 +303,6 @@ export function Web3Provider({ children }) {
       provider,
       signer,
       contracts,
-      isAuthLoading,
       accessToken,
       profile,
       connect,
@@ -325,8 +319,6 @@ export function Web3Provider({ children }) {
 
 export function useWeb3() {
   const ctx = useContext(Web3Context);
-  if (!ctx) {
-    throw new Error("useWeb3 must be used inside <Web3Provider />");
-  }
+  if (!ctx) throw new Error("useWeb3 must be used inside <Web3Provider />");
   return ctx;
 }
