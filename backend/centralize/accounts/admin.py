@@ -32,15 +32,33 @@ class ProfileAdmin(admin.ModelAdmin):
     readonly_fields = (
         "wallet_address",
         "nonce",
+        "nonce_issued_at",
+        "nonce_expires_at",
+        "nonce_chain_id",
+        "nonce_domain",
+        "nonce_uri",
         "created_at",
         "updated_at",
         "photo_preview",
     )
 
     fieldsets = (
-        ("Identity", {"fields": ("wallet_address", "nonce")}),
+        ("Identity", {"fields": ("wallet_address",)}),
         ("Contact", {"fields": ("first_name", "last_name", "email", "phone_number")}),
         ("Profile", {"fields": ("bio", "photo", "photo_preview")}),
+        (
+            "Login metadata (read-only)",
+            {
+                "fields": (
+                    "nonce",
+                    "nonce_issued_at",
+                    "nonce_expires_at",
+                    "nonce_chain_id",
+                    "nonce_domain",
+                    "nonce_uri",
+                )
+            },
+        ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
 
@@ -73,6 +91,21 @@ class ProfileAdmin(admin.ModelAdmin):
         updated = 0
         for profile in queryset:
             profile.rotate_nonce()
-            profile.save(update_fields=["nonce", "updated_at"])
+            # Save all fields touched by rotate_nonce
+            profile.save(
+                update_fields=[
+                    "nonce",
+                    "nonce_issued_at",
+                    "nonce_expires_at",
+                    "updated_at",
+                ]
+            )
             updated += 1
         self.message_user(request, f"Rotated nonce for {updated} profile(s).")
+
+    def save_model(self, request, obj, form, change):
+        """
+        Force a full save. This prevents situations where partial update_fields saves
+        might skip fields edited in the admin.
+        """
+        obj.save()
