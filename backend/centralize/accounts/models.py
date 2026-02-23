@@ -1,4 +1,6 @@
 import secrets
+from datetime import timedelta
+
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -24,7 +26,9 @@ class Profile(models.Model):
     last_name = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     phone_number = models.CharField(
-        max_length=16, blank=True, validators=[phone_validator]
+        max_length=16,
+        blank=True,
+        validators=[phone_validator],
     )
     bio = models.TextField(blank=True)
     photo = models.ImageField(upload_to=profile_photo_path, blank=True, null=True)
@@ -39,11 +43,15 @@ class Profile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # -------------------------
+    # Helpers
+    # -------------------------
+
     def rotate_nonce(self, minutes_valid: int = 5) -> None:
         now = timezone.now()
         self.nonce = secrets.token_hex(16)
         self.nonce_issued_at = now
-        self.nonce_expires_at = now + timezone.timedelta(minutes=minutes_valid)
+        self.nonce_expires_at = now + timedelta(minutes=minutes_valid)
 
     def nonce_is_valid(self) -> bool:
         return bool(
