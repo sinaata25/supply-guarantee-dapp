@@ -59,12 +59,10 @@ const ORDER_STAGE = {
   Created: 0,
   Funded: 1,
   AdvanceRequested: 2,
-  AdvanceApproved: 3,
-  AdvancePaid: 4, // (unused in your contract, but kept)
-  InMilestones: 5,
-  Finalized: 6,
-  Disputed: 7,
-  Cancelled: 8,
+  InMilestones: 3,
+  Finalized: 4,
+  Disputed: 5,
+  Cancelled: 6,
 };
 
 const MS_STAGE = {
@@ -73,8 +71,7 @@ const MS_STAGE = {
   PlanApproved: 2,
   Delivered: 3,
   InspectionApproved: 4,
-  BuyerApproved: 5,
-  Paid: 6,
+  Paid: 5,
 };
 
 /* ---------------- utils ---------------- */
@@ -112,8 +109,6 @@ function rolesFromOrder(o, me) {
     isSeller: addrEq(me, o?.seller),
     isCarrier: addrEq(me, o?.carrier),
     isInspector: addrEq(me, o?.inspector),
-    isBank: addrEq(me, o?.bank),
-    isArbiter: addrEq(me, o?.arbiter),
   };
 }
 
@@ -135,7 +130,6 @@ function stageBadge(stage) {
   if (s === ORDER_STAGE.Created) return { label: "Created", tone: "neutral" };
   if (s === ORDER_STAGE.Funded) return { label: "Funded", tone: "good" };
   if (s === ORDER_STAGE.AdvanceRequested) return { label: "Advance requested", tone: "warn" };
-  if (s === ORDER_STAGE.AdvanceApproved) return { label: "Advance approved", tone: "warn" };
   if (s === ORDER_STAGE.InMilestones) return { label: "In milestones", tone: "good" };
   if (s === ORDER_STAGE.Finalized) return { label: "Finalized", tone: "good" };
   if (s === ORDER_STAGE.Disputed) return { label: "Disputed", tone: "bad" };
@@ -150,7 +144,6 @@ function msLabel(v) {
   if (s === MS_STAGE.PlanApproved) return "Plan approved";
   if (s === MS_STAGE.Delivered) return "Delivered";
   if (s === MS_STAGE.InspectionApproved) return "Inspection approved";
-  if (s === MS_STAGE.BuyerApproved) return "Buyer approved";
   if (s === MS_STAGE.Paid) return "Paid";
   return `Stage ${s}`;
 }
@@ -159,7 +152,7 @@ function msLabel(v) {
 function nextActionFromChain(o, milestones, me) {
   if (!o || !me) return { isMyTurn: false, title: "—", detail: "—" };
 
-  const { isBuyer, isSeller, isCarrier, isInspector, isBank, isArbiter } = rolesFromOrder(o, me);
+  const { isBuyer, isSeller, isCarrier, isInspector } = rolesFromOrder(o, me);
   const stage = Number(o.stage);
 
   if (stage === ORDER_STAGE.Created) {
@@ -174,13 +167,8 @@ function nextActionFromChain(o, milestones, me) {
   }
 
   if (stage === ORDER_STAGE.AdvanceRequested) {
-    if (isBuyer) return { isMyTurn: true, title: "Approve advance", detail: "Buyer submits AdvanceApproval hash." };
-    return { isMyTurn: false, title: "Waiting for buyer", detail: "Buyer must approve advance." };
-  }
-
-  if (stage === ORDER_STAGE.AdvanceApproved) {
-    if (isBank) return { isMyTurn: true, title: "Bank pay advance", detail: "Bank submits payment hash & pays seller." };
-    return { isMyTurn: false, title: "Waiting for bank", detail: "Bank must pay advance." };
+    if (isBuyer) return { isMyTurn: true, title: "Approve & pay advance", detail: "Buyer approves; the advance is paid to the seller automatically." };
+    return { isMyTurn: false, title: "Waiting for buyer", detail: "Buyer must approve & pay advance." };
   }
 
   if (stage === ORDER_STAGE.InMilestones) {
@@ -210,21 +198,15 @@ function nextActionFromChain(o, milestones, me) {
     }
 
     if (ms === MS_STAGE.InspectionApproved) {
-      if (isBuyer) return { isMyTurn: true, title: `Buyer final approval (MS #${cur.idx})`, detail: "Buyer approves milestone payment hash." };
-      return { isMyTurn: false, title: `Waiting for buyer (MS #${cur.idx})`, detail: "Buyer must approve milestone payment." };
-    }
-
-    if (ms === MS_STAGE.BuyerApproved) {
-      if (isBank) return { isMyTurn: true, title: `Bank pay milestone (MS #${cur.idx})`, detail: "Bank pays seller for this milestone." };
-      return { isMyTurn: false, title: `Waiting for bank (MS #${cur.idx})`, detail: "Bank must pay milestone." };
+      if (isBuyer) return { isMyTurn: true, title: `Approve & pay milestone (MS #${cur.idx})`, detail: "Buyer approves; the milestone is paid to the seller automatically." };
+      return { isMyTurn: false, title: `Waiting for buyer (MS #${cur.idx})`, detail: "Buyer must approve & pay milestone." };
     }
 
     return { isMyTurn: false, title: `Waiting (MS #${cur.idx})`, detail: "—" };
   }
 
   if (stage === ORDER_STAGE.Disputed) {
-    if (rolesFromOrder(o, me).isArbiter) return { isMyTurn: true, title: "Resolve dispute", detail: "Arbiter/admin should resolve dispute." };
-    return { isMyTurn: false, title: "Waiting arbiter/admin", detail: "Dispute pending." };
+    return { isMyTurn: false, title: "Waiting for admin", detail: "The admin must resolve the dispute." };
   }
 
   if (stage === ORDER_STAGE.Finalized) return { isMyTurn: false, title: "Finalized", detail: "All done." };
@@ -328,7 +310,7 @@ export default function OrderDetailsPage() {
 
       const idBig = BigInt(orderId);
 
-      const [buyer, seller, carrier, inspector, bank, arbiter] = await contracts.sg.getOrderParties(idBig);
+      const [buyer, seller, carrier, inspector] = await contracts.sg.getOrderParties(idBig);
       const stage = await contracts.sg.orderStageOf(idBig);
 
       const [token, price, advanceBps, advance, deposited, mLocked, mCount, mPaidCount, mTotalBps] =
@@ -361,8 +343,6 @@ export default function OrderDetailsPage() {
         seller,
         carrier,
         inspector,
-        bank,
-        arbiter,
       };
       setO(orderObj);
 
@@ -429,7 +409,7 @@ export default function OrderDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRead, orderId]);
 
-  const { isBuyer, isSeller, isCarrier, isInspector, isBank } = useMemo(() => rolesFromOrder(o, me), [o, me]);
+  const { isBuyer, isSeller, isCarrier, isInspector } = useMemo(() => rolesFromOrder(o, me), [o, me]);
 
   const stage = useMemo(() => stageBadge(o?.stage ?? 0), [o?.stage]);
 
@@ -521,12 +501,6 @@ export default function OrderDetailsPage() {
     await runTx("approveAdvance", () => contracts.sg.approveAdvance(BigInt(o.orderId), h));
   }
 
-  async function doBankPayAdvance() {
-    const h = toBytes32OrNull(docHash);
-    if (!h) return setErr("Payment doc hash is required (text is ok).");
-    await runTx("bankPayAdvance", () => contracts.sg.bankPayAdvance(BigInt(o.orderId), h));
-  }
-
   // ---------- Reject ----------
   async function doReject() {
     const r = String(reason || "").trim();
@@ -583,11 +557,6 @@ export default function OrderDetailsPage() {
     await runTx("approveMilestonePayment", () => contracts.sg.approveMilestonePayment(BigInt(o.orderId), i, h));
   }
 
-  async function doBankPayMilestone() {
-    const i = ensureMsIdx();
-    await runTx("bankPayMilestone", () => contracts.sg.bankPayMilestone(BigInt(o.orderId), i));
-  }
-
   // ---------- Action visibility ----------
   // ✅ طبق درخواست شما: وقتی نوبت نیست، اکشن‌ها اصلاً نمایش داده نشه
   const showAnyActions = !!o && isMyTurn;
@@ -595,12 +564,10 @@ export default function OrderDetailsPage() {
   const showFund = showAnyActions && o?.stage === ORDER_STAGE.Created && isBuyer && !!o?.mLocked;
   const showRequestAdvance = showAnyActions && o?.stage === ORDER_STAGE.Funded && isSeller;
   const showApproveAdvance = showAnyActions && o?.stage === ORDER_STAGE.AdvanceRequested && isBuyer;
-  const showBankPayAdvance = showAnyActions && o?.stage === ORDER_STAGE.AdvanceApproved && isBank;
 
   const showReject =
     showAnyActions &&
     ((o?.stage === ORDER_STAGE.AdvanceRequested && isBuyer) ||
-      (o?.stage === ORDER_STAGE.AdvanceApproved && isBank) ||
       (o?.stage === ORDER_STAGE.InMilestones && (isBuyer || isCarrier || isInspector)));
 
   const milestoneAction = useMemo(() => {
@@ -617,11 +584,10 @@ export default function OrderDetailsPage() {
     if (ms === MS_STAGE.Planned && isBuyer) return { label: "Approve plan", icon: ShieldCheck, needsHash: true, fn: doApprovePlan };
     if (ms === MS_STAGE.PlanApproved && (isSeller || isCarrier)) return { label: "Confirm delivery", icon: Send, needsHash: true, fn: doConfirmDelivery };
     if (ms === MS_STAGE.Delivered && isInspector) return { label: "Approve inspection", icon: ShieldCheck, needsHash: true, fn: doApproveInspection };
-    if (ms === MS_STAGE.InspectionApproved && isBuyer) return { label: "Buyer final approval", icon: ShieldCheck, needsHash: true, fn: doBuyerFinalApproval };
-    if (ms === MS_STAGE.BuyerApproved && isBank) return { label: "Bank pay milestone", icon: Coins, needsHash: false, fn: doBankPayMilestone };
+    if (ms === MS_STAGE.InspectionApproved && isBuyer) return { label: "Approve & pay milestone", icon: Coins, needsHash: true, fn: doBuyerFinalApproval };
 
     return null;
-  }, [o, selectedMs, showAnyActions, currentUnpaid, isSeller, isCarrier, isBuyer, isInspector, isBank]);
+  }, [o, selectedMs, showAnyActions, currentUnpaid, isSeller, isCarrier, isBuyer, isInspector]);
 
   // ✅ disabled milestone button: به جای state از ref هم کمک می‌گیریم
   const milestoneHashReady = useMemo(() => {
@@ -713,8 +679,6 @@ export default function OrderDetailsPage() {
                     <div className="kv"><div className="k">Seller</div><div className="v mono">{shortAddr(o.seller)}</div></div>
                     <div className="kv"><div className="k">Carrier</div><div className="v mono">{shortAddr(o.carrier)}</div></div>
                     <div className="kv"><div className="k">Inspector</div><div className="v mono">{shortAddr(o.inspector)}</div></div>
-                    <div className="kv"><div className="k">Bank</div><div className="v mono">{shortAddr(o.bank)}</div></div>
-                    <div className="kv"><div className="k">Arbiter</div><div className="v mono">{shortAddr(o.arbiter)}</div></div>
                   </div>
                 </div>
 
@@ -805,37 +769,19 @@ export default function OrderDetailsPage() {
                     </div>
                   ) : null}
 
-                  {/* Buyer: Approve advance */}
+                  {/* Buyer: Approve & pay advance */}
                   {showApproveAdvance ? (
                     <div className="actionRow">
                       <div className="actionInfo">
-                        <div className="actionName">Approve advance</div>
-                        <div className="actionDesc">Buyer approves advance with a doc hash.</div>
+                        <div className="actionName">Approve &amp; pay advance</div>
+                        <div className="actionDesc">Buyer approves with a doc hash; the advance is paid to the seller automatically.</div>
                       </div>
                       <div className="actionControls">
                         <Field label="Doc hash (bytes32 یا text)">
                           <input className="input mono" value={docHash} onChange={(e) => setDocHash(e.target.value)} placeholder="0x…32bytes OR any text" />
                         </Field>
-                        <Btn kind="primary" icon={ShieldCheck} disabled={!String(docHash).trim() || !!busy} onClick={doApproveAdvance}>
-                          {busy === "approveAdvance" ? "Approving…" : "Approve"}
-                        </Btn>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Bank: Pay advance */}
-                  {showBankPayAdvance ? (
-                    <div className="actionRow">
-                      <div className="actionInfo">
-                        <div className="actionName">Bank pay advance</div>
-                        <div className="actionDesc">Bank submits payment hash and pays seller.</div>
-                      </div>
-                      <div className="actionControls">
-                        <Field label="Payment doc hash (bytes32 یا text)">
-                          <input className="input mono" value={docHash} onChange={(e) => setDocHash(e.target.value)} placeholder="0x…32bytes OR any text" />
-                        </Field>
-                        <Btn kind="primary" icon={Coins} disabled={!String(docHash).trim() || !!busy} onClick={doBankPayAdvance}>
-                          {busy === "bankPayAdvance" ? "Paying…" : "Pay advance"}
+                        <Btn kind="primary" icon={Coins} disabled={!String(docHash).trim() || !!busy} onClick={doApproveAdvance}>
+                          {busy === "approveAdvance" ? "Approving…" : "Approve & pay"}
                         </Btn>
                       </div>
                     </div>

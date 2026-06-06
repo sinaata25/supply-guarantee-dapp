@@ -42,28 +42,22 @@ function upsertPartiesFromChain(order: Order, orderId: BigInt, contractAddr: Add
 
   let p = res.value;
 
-  // ترتیب خروجی طبق ABI تو: buyer, seller, carrier, inspector, bank, arbiter
+  // ترتیب خروجی طبق ABI تو: buyer, seller, carrier, inspector
   let buyer = p.getValue0();
   let seller = p.getValue1();
   let carrier = p.getValue2();
   let inspector = p.getValue3();
-  let bank = p.getValue4();
-  let arbiter = p.getValue5();
 
   order.buyer = buyer;
   order.seller = seller;
   order.carrier = carrier;
   order.inspector = inspector;
-  order.bank = bank;
-  order.arbiter = arbiter;
 
   // participants هم برای همه رول‌ها
   addParticipant(orderId, buyer, "buyer");
   addParticipant(orderId, seller, "seller");
   addParticipant(orderId, carrier, "carrier");
   addParticipant(orderId, inspector, "inspector");
-  addParticipant(orderId, bank, "bank");
-  addParticipant(orderId, arbiter, "arbiter");
 }
 
 export function handleOrderCreated(event: OrderCreatedEvent): void {
@@ -78,8 +72,6 @@ export function handleOrderCreated(event: OrderCreatedEvent): void {
   // اینا رو فعلاً صفر نکن—از chain پر می‌کنیم
   order.carrier = Address.zero();
   order.inspector = Address.zero();
-  order.bank = Address.zero();
-  order.arbiter = Address.zero();
 
   order.token = event.params.token;
   order.price = event.params.price;

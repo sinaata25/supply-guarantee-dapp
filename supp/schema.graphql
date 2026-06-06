@@ -5,8 +5,6 @@ type Order @entity(immutable: false) {
   seller: Bytes!
   carrier: Bytes!
   inspector: Bytes!
-  bank: Bytes!
-  arbiter: Bytes!
 
   token: Bytes!
   price: BigInt!

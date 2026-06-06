@@ -5,20 +5,17 @@ export const ROLE_LABELS = {
   seller: "Seller",
   carrier: "Carrier",
   inspector: "Inspector",
-  bank: "Bank",
-  arbiter: "Arbiter",
 };
 
+// Matches the enum inside the smart contract
 export const ORDER_STAGE = {
   Created: 0,
   Funded: 1,
   AdvanceRequested: 2,
-  AdvanceApproved: 3,
-  AdvancePaid: 4,
-  InMilestones: 5,
-  Finalized: 6,
-  Disputed: 7,
-  Cancelled: 8,
+  InMilestones: 3,
+  Finalized: 4,
+  Disputed: 5,
+  Cancelled: 6,
 };
 
 // Matches the enum inside the smart contract
@@ -28,8 +25,7 @@ export const MILESTONE_STAGE = {
   PlanApproved: 2,
   Delivered: 3,
   InspectionApproved: 4,
-  BuyerApproved: 5,
-  Paid: 6,
+  Paid: 5,
 };
 
 export function shortAddr(a) {
@@ -38,28 +34,26 @@ export function shortAddr(a) {
 }
 
 export function stageLabel(stageNum) {
-  // enum OrderStage { Created, Funded, AdvanceRequested, AdvanceApproved, AdvancePaid, InMilestones, Finalized, Disputed, Cancelled }
+  // enum OrderStage { Created, Funded, AdvanceRequested, InMilestones, Finalized, Disputed, Cancelled }
   const m = {
     0: "Created",
     1: "Funded",
     2: "Advance Requested",
-    3: "Advance Approved",
-    4: "Advance Paid",
-    5: "In Milestones",
-    6: "Finalized",
-    7: "Disputed",
-    8: "Cancelled",
+    3: "In Milestones",
+    4: "Finalized",
+    5: "Disputed",
+    6: "Cancelled",
   };
   return m[Number(stageNum)] ?? `Stage #${stageNum}`;
 }
 
 export function stageTone(stageNum) {
   const s = Number(stageNum);
-  if (s === 6) return "green"; // Finalized
-  if (s === 7) return "red"; // Disputed
-  if (s === 8) return "gray"; // Cancelled
-  if (s === 5) return "blue"; // InMilestones
-  if (s === 1 || s === 3 || s === 4) return "amber";
+  if (s === ORDER_STAGE.Finalized) return "green";
+  if (s === ORDER_STAGE.Disputed) return "red";
+  if (s === ORDER_STAGE.Cancelled) return "gray";
+  if (s === ORDER_STAGE.InMilestones) return "blue";
+  if (s === ORDER_STAGE.Funded || s === ORDER_STAGE.AdvanceRequested) return "amber";
   return "gray";
 }
 
@@ -114,18 +108,14 @@ export function nextActionForOrder(o) {
     isMyTurn: false,
   };
 
-  // Dispute flow
+  // Dispute flow (resolved by the admin/owner only)
   if (st === ORDER_STAGE.Disputed) {
-    const requiredRoles = ["arbiter"];
-    const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
     return {
       title: "Dispute needs resolution",
-      detail: isMyTurn
-        ? "It's your turn: resolve the dispute."
-        : "The Arbiter/Admin must submit the final decision.",
-      tone: isMyTurn ? "amber" : "red",
-      requiredRoles,
-      isMyTurn,
+      detail: "The admin must resolve the dispute.",
+      tone: "red",
+      requiredRoles: [],
+      isMyTurn: false,
     };
   }
 
@@ -179,40 +169,18 @@ export function nextActionForOrder(o) {
     };
   }
 
-  // AdvanceRequested => buyer approves
+  // AdvanceRequested => buyer approves & pays advance
   if (st === ORDER_STAGE.AdvanceRequested) {
     const requiredRoles = ["buyer"];
     const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
     return {
-      title: "Buyer approves advance",
-      detail: isMyTurn ? "It's your turn: approve the advance." : "Buyer must approve the advance.",
+      title: "Buyer approves & pays advance",
+      detail: isMyTurn
+        ? "It's your turn: approve the advance (the payment is sent automatically)."
+        : "Buyer must approve and pay the advance.",
       tone: isMyTurn ? "blue" : "gray",
       requiredRoles,
       isMyTurn,
-    };
-  }
-
-  // AdvanceApproved => bank pays advance
-  if (st === ORDER_STAGE.AdvanceApproved) {
-    const requiredRoles = ["bank"];
-    const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
-    return {
-      title: "Bank pays advance",
-      detail: isMyTurn ? "It's your turn: pay the advance." : "Bank must pay the advance.",
-      tone: isMyTurn ? "blue" : "gray",
-      requiredRoles,
-      isMyTurn,
-    };
-  }
-
-  // (AdvancePaid exists in the enum, but the contract may jump to InMilestones after bankPayAdvance)
-  if (st === ORDER_STAGE.AdvancePaid) {
-    return {
-      title: "Advance paid",
-      detail: "Transitioning into milestones…",
-      tone: "amber",
-      requiredRoles: [],
-      isMyTurn: false,
     };
   }
 
@@ -291,22 +259,10 @@ export function nextActionForOrder(o) {
       const requiredRoles = ["buyer"];
       const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
       return {
-        title: `${msName}: Buyer final approval`,
+        title: `${msName}: Buyer approves & pays`,
         detail: isMyTurn
-          ? "It's your turn: submit the buyer’s final approval."
-          : "Buyer must submit the final approval.",
-        tone: isMyTurn ? "blue" : "gray",
-        requiredRoles,
-        isMyTurn,
-      };
-    }
-
-    if (msStage === MILESTONE_STAGE.BuyerApproved) {
-      const requiredRoles = ["bank"];
-      const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
-      return {
-        title: `${msName}: Bank pays milestone`,
-        detail: isMyTurn ? "It's your turn: pay the milestone." : "Bank must pay the milestone amount.",
+          ? "It's your turn: approve the milestone (the payment is sent automatically)."
+          : "Buyer must approve and pay this milestone.",
         tone: isMyTurn ? "blue" : "gray",
         requiredRoles,
         isMyTurn,

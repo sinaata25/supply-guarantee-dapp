@@ -808,8 +808,6 @@ export default function NewOrderPage() {
   const [seller, setSeller] = useState("");
   const [carrier, setCarrier] = useState("");
   const [inspector, setInspector] = useState("");
-  const [bank, setBank] = useState("");
-  const [arbiter, setArbiter] = useState("");
 
   const [token, setToken] = useState(WEB3_CONFIG.tokenAddress || "");
   const [priceHuman, setPriceHuman] = useState("");
@@ -966,7 +964,6 @@ export default function NewOrderPage() {
 
     if (!buyer) fe.buyer = "Buyer is required.";
     if (!seller) fe.seller = "Seller is required.";
-    if (!bank) fe.bank = "Bank is required.";
     if (!token) fe.token = "Token is required.";
     if (!inspector) fe.inspector = "Inspector is required for MVP.";
 
@@ -1111,8 +1108,6 @@ export default function NewOrderPage() {
         seller,
         carrier || ZERO,
         inspector || ZERO,
-        bank,
-        arbiter || ZERO,
         token,
         wei,
         Number(advanceBps),
@@ -1301,17 +1296,6 @@ export default function NewOrderPage() {
                       />
 
                       <AddressAutocomplete
-                        label="Bank"
-                        hint="0x… or email…"
-                        value={bank}
-                        setValue={setBank}
-                        error={fieldErrors.bank}
-                        accounts={accounts}
-                        loading={accountsLoading}
-                        minChars={2}
-                      />
-
-                      <AddressAutocomplete
                         label="Inspector (required)"
                         hint="0x… or email…"
                         value={inspector}
@@ -1328,17 +1312,6 @@ export default function NewOrderPage() {
                         value={carrier}
                         setValue={setCarrier}
                         error={fieldErrors.carrier}
-                        accounts={accounts}
-                        loading={accountsLoading}
-                        minChars={2}
-                      />
-
-                      <AddressAutocomplete
-                        label="Arbiter (optional)"
-                        hint="0x… or email…"
-                        value={arbiter}
-                        setValue={setArbiter}
-                        error={fieldErrors.arbiter}
                         accounts={accounts}
                         loading={accountsLoading}
                         minChars={2}
@@ -1570,10 +1543,8 @@ export default function NewOrderPage() {
                     <div className={styles.stack12}>
                       <MiniStat label="Buyer" value={buyer || "—"} copyable />
                       <MiniStat label="Seller" value={seller || "—"} copyable />
-                      <MiniStat label="Bank" value={bank || "—"} copyable />
                       <MiniStat label="Inspector" value={inspector || "—"} copyable />
                       <MiniStat label="Carrier" value={carrier || ZERO} copyable />
-                      <MiniStat label="Arbiter" value={arbiter || ZERO} copyable />
                     </div>
                   </SectionCard>
 

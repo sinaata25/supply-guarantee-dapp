@@ -8,6 +8,7 @@ import {
   stageLabel,
   stageTone,
   nextActionForOrder,
+  ORDER_STAGE,
 } from "@/components/app/orderUtils";
 
 /* ---------- helpers ---------- */
@@ -62,8 +63,8 @@ function formatAmountHuman(amountLike) {
 
 function StageIcon({ stage }) {
   const s = Number(stage);
-  if (s === 6) return <BadgeCheck size={16} />;
-  if (s === 7) return <AlertTriangle size={16} />;
+  if (s === ORDER_STAGE.Finalized) return <BadgeCheck size={16} />;
+  if (s === ORDER_STAGE.Disputed) return <AlertTriangle size={16} />;
   return null;
 }
 
@@ -79,8 +80,8 @@ function Badge({ tone = "gray", children, className = "" }) {
 function ProgressionBar({ stage, pct }) {
   const s = Number(stage);
   const p = clamp(pct);
-  const isDone = s === 6;
-  const isDispute = s === 7;
+  const isDone = s === ORDER_STAGE.Finalized;
+  const isDispute = s === ORDER_STAGE.Disputed;
 
   const label = isDispute ? "Dispute" : isDone ? "Completed" : `${p}%`;
 

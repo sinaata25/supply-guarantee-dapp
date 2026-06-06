@@ -50,13 +50,16 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     using SafeERC20Lite for IERC20;
 
 
-    enum OrderStage { Created, Funded, AdvanceRequested, AdvanceApproved, AdvancePaid, InMilestones, Finalized, Disputed, Cancelled }
-  
-    enum MilestoneStage { NotStarted, Planned, PlanApproved, Delivered, InspectionApproved, BuyerApproved, Paid }
+    // Bank & Arbiter roles removed. Buyer approval pays automatically.
+    // Disputes/cancellation are handled by the contract owner (admin).
+    enum OrderStage { Created, Funded, AdvanceRequested, InMilestones, Finalized, Disputed, Cancelled }
+
+    // Buyer's final approval pays the milestone in the same tx (no separate Bank step).
+    enum MilestoneStage { NotStarted, Planned, PlanApproved, Delivered, InspectionApproved, Paid }
 
 
     enum DocType {
-        AdvanceRequest, AdvanceApproval, AdvancePayment,
+        AdvanceRequest, AdvanceApproval,
         M_Plan, M_PlanApproval, M_Delivery, M_InspectionReport, M_BuyerFinalApproval
     }
 
@@ -66,12 +69,12 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
 
     struct Milestone {
         bytes32 name;
-        uint16  bps;    
-        uint256 amount;    
+        uint16  bps;
+        uint256 amount;
         MilestoneStage stage;
         MilestoneDeadlines dl;
 
-        DocSlot plan;        
+        DocSlot plan;
         DocSlot planApproval;
         DocSlot delivery;
         DocSlot inspection;
@@ -80,8 +83,8 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
 
     struct Order {
         //Roles
-        address buyer; address seller; address carrier; address inspector; address bank; address arbiter;
-        //CAsh
+        address buyer; address seller; address carrier; address inspector;
+        //Cash
         address token;
         uint256 price;
         uint16  advanceBps;
@@ -91,6 +94,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         OrderStage stage;
         bool exists;
         bool mLocked;
+        bool advancePaid;
         OrderDeadlines odl;
         //Milestones
         uint8  mCount;
@@ -100,7 +104,6 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         //Documents pre Pay
         DocSlot advReq;
         DocSlot advApprove;
-        DocSlot advPay;
     }
 
     uint256 public nextOrderId = 1;
@@ -113,8 +116,8 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     event MilestoneStageChanged(uint256 indexed orderId, uint8 indexed idx, MilestoneStage prev, MilestoneStage next);
 
     event Funded(uint256 indexed orderId, address indexed by, uint256 amount, uint256 total);
-    event PaidAdvance(uint256 indexed orderId, address indexed to, uint256 amount, address indexed byBank);
-    event PaidMilestone(uint256 indexed orderId, uint8 indexed idx, address indexed to, uint256 amount, address byBank);
+    event PaidAdvance(uint256 indexed orderId, address indexed to, uint256 amount, address indexed by);
+    event PaidMilestone(uint256 indexed orderId, uint8 indexed idx, address indexed to, uint256 amount, address by);
 
     event DocSubmitted(uint256 indexed orderId, DocType indexed t, uint8 indexed idx, bytes32 hash32, address by);
     event Rejected(uint256 indexed orderId, string reason, address indexed by);
@@ -132,8 +135,6 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     modifier onlySeller(uint256 id){ require(msg.sender == orders[id].seller, "not seller"); _; }
     modifier onlyCarrier(uint256 id){ require(msg.sender == orders[id].carrier, "not carrier"); _; }
     modifier onlyInspector(uint256 id){ require(msg.sender == orders[id].inspector, "not inspector"); _; }
-    modifier onlyBank(uint256 id){ require(msg.sender == orders[id].bank, "not bank"); _; }
-    modifier onlyArbOrAdmin(uint256 id){ require(msg.sender==orders[id].arbiter || msg.sender==owner, "not arb/admin"); _; }
     modifier onlyConfigurator(uint256 id){
         Order storage o = orders[id];
         require(msg.sender==owner || msg.sender==o.buyer || msg.sender==o.seller, "not configurator");
@@ -152,25 +153,25 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     function _now() internal view returns(uint64){ return uint64(block.timestamp); }
 
     function createOrderHeader(
-        address buyer, address seller, address carrier, address inspector, address bank, address arbiter,
+        address buyer, address seller, address carrier, address inspector,
         address token, uint256 price, uint16 advanceBps,
         OrderDeadlines calldata odl
     ) external whenNotPaused returns (uint256 id) {
-        require(token!=address(0) && buyer!=address(0) && seller!=address(0) && bank!=address(0), "zero addr");
+        require(token!=address(0) && buyer!=address(0) && seller!=address(0), "zero addr");
         require(price>0, "price=0");
         require(advanceBps<=10_000, "advanceBps>10000");
 
         id = nextOrderId++;
         Order storage o = orders[id];
-        o.buyer=buyer; o.seller=seller; o.carrier=carrier; o.inspector=inspector; o.bank=bank; o.arbiter=arbiter;
+        o.buyer=buyer; o.seller=seller; o.carrier=carrier; o.inspector=inspector;
         o.token=token; o.price=price; o.advanceBps=advanceBps;
         o.advance = (price*advanceBps)/10_000;
         o.deposited=0;
-        o.stage=OrderStage.Created; o.exists=true; o.mLocked=false; o.odl=odl;
+        o.stage=OrderStage.Created; o.exists=true; o.mLocked=false; o.advancePaid=false; o.odl=odl;
         emit OrderCreated(id, buyer, seller, token, price, advanceBps);
         emit OrderStageChanged(id, OrderStage.Created, OrderStage.Created);
     }
-    
+
     function addMilestone(
         uint256 id, bytes32 name, uint16 bps, MilestoneDeadlines calldata dl
     ) external whenNotPaused orderExists(id) onlyConfigurator(id) {
@@ -216,21 +217,16 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         _setOrderStage(id, OrderStage.AdvanceRequested);
     }
 
-    function approveAdvance(uint256 id, bytes32 h) external whenNotPaused orderExists(id) onlyBuyer(id) {
+    // Buyer approves AND pays the advance in one step (Bank role removed).
+    function approveAdvance(uint256 id, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.AdvanceRequested, "bad stage");
         if (o.odl.advanceApprovalBy!=0) require(block.timestamp<=o.odl.advanceApprovalBy, "deadline");
         o.advApprove = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.AdvanceApproval, 255, h, msg.sender);
-        _setOrderStage(id, OrderStage.AdvanceApproved);
-    }
 
-    function bankPayAdvance(uint256 id, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBank(id) {
-        Order storage o = orders[id];
-        require(o.stage==OrderStage.AdvanceApproved, "bad stage");
-        o.advPay = DocSlot(h,_now(),msg.sender);
-        emit DocSubmitted(id, DocType.AdvancePayment, 255, h, msg.sender);
-        IERC20(o.token).safeTransfer(o.seller, o.advance);
+        o.advancePaid = true;
+        if (o.advance > 0) IERC20(o.token).safeTransfer(o.seller, o.advance);
         emit PaidAdvance(id, o.seller, o.advance, msg.sender);
         _setOrderStage(id, OrderStage.InMilestones);
     }
@@ -286,7 +282,8 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         _setMilestoneStage(id, idx, MilestoneStage.InspectionApproved);
     }
 
-    function approveMilestonePayment(uint256 id, uint8 idx, bytes32 h) external whenNotPaused orderExists(id) onlyBuyer(id) {
+    // Buyer's final approval pays the milestone in the same tx (Bank role removed).
+    function approveMilestonePayment(uint256 id, uint8 idx, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.InMilestones,"order not in milestones");
         require(idx<o.mCount,"bad idx");
@@ -295,15 +292,6 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         if (m.dl.buyerApprovalBy!=0) require(block.timestamp<=m.dl.buyerApprovalBy,"buyer dl");
         m.buyerApproval = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.M_BuyerFinalApproval, idx, h, msg.sender);
-        _setMilestoneStage(id, idx, MilestoneStage.BuyerApproved);
-    }
-
-    function bankPayMilestone(uint256 id, uint8 idx) external nonReentrant whenNotPaused orderExists(id) onlyBank(id) {
-        Order storage o = orders[id];
-        require(o.stage==OrderStage.InMilestones,"order not in milestones");
-        require(idx<o.mCount,"bad idx");
-        Milestone storage m = o.milestones[idx];
-        require(m.stage==MilestoneStage.BuyerApproved,"wrong ms stage");
 
         IERC20(o.token).safeTransfer(o.seller, m.amount);
         emit PaidMilestone(id, idx, o.seller, m.amount, msg.sender);
@@ -316,7 +304,6 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     function rejectCurrent(uint256 id, string calldata reason) external whenNotPaused orderExists(id) {
         Order storage o = orders[id];
         if (o.stage==OrderStage.AdvanceRequested)        require(msg.sender==o.buyer,"buyer only");
-        else if (o.stage==OrderStage.AdvanceApproved)    require(msg.sender==o.bank,"bank only");
         else if (o.stage==OrderStage.InMilestones)       require(msg.sender==o.buyer || msg.sender==o.carrier || msg.sender==o.inspector, "not allowed");
         else revert("reject not allowed");
         emit Rejected(id, reason, msg.sender);
@@ -324,13 +311,13 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         emit DisputeRaised(id, reason, msg.sender);
     }
 
-    function resolveDisputeTo(uint256 id, OrderStage next, string calldata note) external whenNotPaused orderExists(id) onlyArbOrAdmin(id) {
+    function resolveDisputeTo(uint256 id, OrderStage next, string calldata note) external whenNotPaused orderExists(id) onlyOwner {
         require(orders[id].stage==OrderStage.Disputed,"no dispute");
         emit DisputeResolved(id, next, note, msg.sender);
         _setOrderStage(id, next);
     }
 
-    function cancelByArbiter(uint256 id, string calldata note) external whenNotPaused orderExists(id) onlyArbOrAdmin(id) {
+    function cancelByAdmin(uint256 id, string calldata note) external whenNotPaused orderExists(id) onlyOwner {
         _setOrderStage(id, OrderStage.Cancelled);
         _refund(id);
         emit Cancelled(id, note, msg.sender);
@@ -340,9 +327,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         Order storage o = orders[id];
         IERC20 t = IERC20(o.token);
         uint256 paid = 0;
-        if (o.stage==OrderStage.InMilestones || o.stage==OrderStage.Finalized || o.stage==OrderStage.Disputed || o.stage==OrderStage.Cancelled) {
-            paid += o.advance;
-        }
+        if (o.advancePaid) paid += o.advance;
         for (uint8 i=0;i<o.mCount;i++){
             if (o.milestones[i].stage==MilestoneStage.Paid) paid += o.milestones[i].amount;
         }
@@ -360,8 +345,8 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
 
 
     function orderStageOf(uint256 id) external view orderExists(id) returns(OrderStage){ return orders[id].stage; }
-    function getOrderParties(uint256 id) external view orderExists(id) returns(address,address,address,address,address,address){
-        Order storage o = orders[id]; return (o.buyer,o.seller,o.carrier,o.inspector,o.bank,o.arbiter);
+    function getOrderParties(uint256 id) external view orderExists(id) returns(address,address,address,address){
+        Order storage o = orders[id]; return (o.buyer,o.seller,o.carrier,o.inspector);
     }
     function getOrderMoney(uint256 id) external view orderExists(id) returns(address token,uint256 price,uint16 advanceBps,uint256 advance,uint256 deposited,bool mLocked,uint8 mCount,uint8 mPaidCount,uint16 mTotalBps){
         Order storage o = orders[id]; return (o.token,o.price,o.advanceBps,o.advance,o.deposited,o.mLocked,o.mCount,o.mPaidCount,o.mTotalBps);

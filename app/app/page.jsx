@@ -30,8 +30,6 @@ function detectRolesFromParties(parties, me) {
   if (normalizeHexAddress(parties?.seller) === m) roles.push("seller");
   if (normalizeHexAddress(parties?.carrier) === m) roles.push("carrier");
   if (normalizeHexAddress(parties?.inspector) === m) roles.push("inspector");
-  if (normalizeHexAddress(parties?.bank) === m) roles.push("bank");
-  if (normalizeHexAddress(parties?.arbiter) === m) roles.push("arbiter");
 
   return roles;
 }
@@ -118,7 +116,7 @@ export default function AppDashboardPage() {
   const [roleFilter, setRoleFilter] = useState("all");
 
   const roleOptions = useMemo(
-    () => ["all", "buyer", "seller", "carrier", "inspector", "bank", "arbiter"],
+    () => ["all", "buyer", "seller", "carrier", "inspector"],
     []
   );
 
@@ -158,7 +156,7 @@ export default function AppDashboardPage() {
         try {
           const orderIdBig = BigInt(id);
 
-          const [buyer, seller, carrier, inspector, bank, arbiter] =
+          const [buyer, seller, carrier, inspector] =
             await contracts.sg.getOrderParties(orderIdBig);
 
           const stage = await contracts.sg.orderStageOf(orderIdBig);
@@ -175,7 +173,7 @@ export default function AppDashboardPage() {
             mTotalBps,
           ] = await contracts.sg.getOrderMoney(orderIdBig);
 
-          const parties = { buyer, seller, carrier, inspector, bank, arbiter };
+          const parties = { buyer, seller, carrier, inspector };
 
           const rolesFromChain = detectRolesFromParties(parties, me);
           const rolesFromGraph = row.roles || [];
@@ -201,8 +199,6 @@ export default function AppDashboardPage() {
             seller,
             carrier,
             inspector,
-            bank,
-            arbiter,
           });
         } catch (e) {
           console.error("Reading order failed id=" + id, e);
@@ -245,7 +241,7 @@ export default function AppDashboardPage() {
               <div className="kicker">SupplyGuarantee • Dashboard</div>
               <h1 className="h1">My Orders</h1>
               <p className="desc">
-                Shows orders where your wallet is a participant (Buyer/Seller/Carrier/Inspector/Bank/Arbiter).
+                Shows orders where your wallet is a participant (Buyer/Seller/Carrier/Inspector).
               </p>
             </div>
 
