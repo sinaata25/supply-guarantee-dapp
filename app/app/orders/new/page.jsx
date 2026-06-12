@@ -28,6 +28,7 @@ import styles from "./NewOrderPage.module.css";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { WEB3_CONFIG } from "@/lib/web3/config";
 import { toBytes32Label } from "@/lib/web3/bytes";
+import { notifyOrderStage } from "@/lib/api";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 const TOKEN_DECIMALS = 18;
@@ -784,7 +785,7 @@ export default function NewOrderPage() {
   const router = useRouter();
   const redirectTimerRef = useRef(null);
 
-  const { account, isCorrectChain, connect, switchToTargetChain, contracts } =
+  const { account, isCorrectChain, connect, switchToTargetChain, contracts, accessToken } =
     useWeb3();
 
   const steps = useMemo(
@@ -792,7 +793,6 @@ export default function NewOrderPage() {
       { k: 1, label: "Header" },
       { k: 2, label: "Milestones" },
       { k: 3, label: "Review" },
-      { k: 4, label: "Funding" },
     ],
     []
   );
@@ -1052,7 +1052,7 @@ export default function NewOrderPage() {
     try {
       if (step === 1) validateHeaderSoft();
       if (step === 2) validateMilestonesSoft();
-      setStep((s) => Math.min(4, s + 1));
+      setStep((s) => Math.min(3, s + 1));
     } catch (e) {
       setError(e?.message || "Validation failed");
     }
@@ -1161,42 +1161,26 @@ export default function NewOrderPage() {
         orderId: createdId,
       });
 
-      setStatus(`Created & locked ✅ orderId=${createdId}. Redirecting to home…`);
-      router.push("/");
+      // Notify the next actor (the seller) that it's their turn — best effort.
+      try {
+        if (seller && seller.toLowerCase() !== String(account).toLowerCase()) {
+          const orderstage =
+            Number(advanceBps) > 0 ? "ثبت درخواست پیش‌پرداخت" : "ثبت برنامه ارسال";
+          await notifyOrderStage(
+            { walletAddress: seller, orderstage, orderId: createdId },
+            accessToken
+          );
+        }
+      } catch {}
+
+      setStatus(`Created & locked ✅ orderId=${createdId}. Opening the order…`);
+      router.push(`/app/orders/${createdId}`);
     } catch (e) {
       console.error(`🟥 [Create&Lock] ERROR runId=${runId}`, e);
       setError(e?.shortMessage || e?.message || "Create failed");
     } finally {
       setBusy(false);
       inFlightRef.current = false;
-    }
-  }
-
-  //******************************************************************************** */
-  async function handleApproveAndFund() {
-    resetMsg();
-    resetFieldErrors();
-    setBusy(true);
-    try {
-      requireWeb3Ready();
-      if (!orderId) throw new Error("No orderId. Create the order first.");
-
-      const amt = parseUnits18(priceHuman);
-      if (amt <= 0n) throw new Error("Invalid price.");
-
-      setStatus("Approving token spend… confirm in wallet.");
-      const tx1 = await contracts.token.approve(WEB3_CONFIG.sgAddress, amt);
-      await tx1.wait();
-
-      setStatus("Funding escrow… confirm in wallet.");
-      const tx2 = await contracts.sg.fund(BigInt(orderId), amt);
-      await tx2.wait();
-
-      setStatus("Funded ✅");
-    } catch (e) {
-      setError(e?.shortMessage || e?.message || "Approve/Fund failed");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -1572,76 +1556,14 @@ export default function NewOrderPage() {
                     Create & Lock <ArrowRight size={18} />
                   </ButtonPrimary>
                 </div>
-              </CardBody>
-            </Card>
-          ) : null}
-
-          {/* Step 4 */}
-          {step === 4 ? (
-            <Card fullBleed>
-              <CardHeader
-                title="Step 4 — Funding"
-                subtitle="Approve token allowance, then fund escrow with the full price."
-                right={
-                  orderId ? (
-                    <span className={styles.progressPill} style={{ gap: 8 }}>
-                      orderId:
-                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
-                        {orderId}
-                      </span>
-                    </span>
-                  ) : null
-                }
-              />
-              <CardBody>
-                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-                  <MiniStat label="Token" value={WEB3_CONFIG.tokenAddress} copyable />
-                  <MiniStat label="Escrow (SupplyGuarantee)" value={WEB3_CONFIG.sgAddress} copyable />
-                  <MiniStat label="ChainId" value={String(WEB3_CONFIG.chainId)} />
-                  <MiniStat label="Amount (human)" value={priceHuman || "—"} />
-                  <MiniStat label="Amount (wei)" value={priceWei > 0n ? priceWei.toString() : "—"} copyable />
-                  <MiniStat label="Formatted check" value={priceWei > 0n ? formatUnits18(priceWei) : "—"} />
-                </div>
 
                 <div style={{ marginTop: 14 }}>
-                  <InlineBanner kind="info" title="What will happen">
-                    This triggers{" "}
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
-                      token.approve()
-                    </span>{" "}
-                    and then{" "}
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}>
-                      sg.fund()
-                    </span>
-                    .
+                  <InlineBanner kind="info" title="Staged payments">
+                    No upfront deposit. After creating the order, the buyer locks
+                    each stage's exact amount in escrow as the order progresses —
+                    the advance first, then each milestone — released to the seller
+                    on approval. You'll do this from the order page.
                   </InlineBanner>
-                </div>
-
-                <div className={styles.btnRow}>
-                  <ButtonSecondary onClick={goBack} disabled={busy}>
-                    <ArrowLeft size={18} />
-                    Back
-                  </ButtonSecondary>
-
-                  {!account ? (
-                    <ButtonPrimary onClick={connect}>
-                      <Wallet size={18} />
-                      Connect Wallet
-                    </ButtonPrimary>
-                  ) : !isCorrectChain ? (
-                    <ButtonPrimary onClick={switchToTargetChain}>
-                      Switch Network <ArrowRight size={18} />
-                    </ButtonPrimary>
-                  ) : (
-                    <ButtonPrimary
-                      onClick={handleApproveAndFund}
-                      disabled={!canWrite || !orderId || priceWei <= 0n}
-                      loading={busy}
-                    >
-                      <Coins size={18} />
-                      Approve + Fund
-                    </ButtonPrimary>
-                  )}
                 </div>
               </CardBody>
             </Card>

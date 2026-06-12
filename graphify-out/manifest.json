@@ -1,0 +1,452 @@
+{
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\.claude\\settings.json": {
+    "mtime": 1781263072.4372623,
+    "ast_hash": "7bf81dca0376bde3a32244b82bc7cbc0",
+    "semantic_hash": "7bf81dca0376bde3a32244b82bc7cbc0"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\app\\orders\\[orderId]\\page.jsx": {
+    "mtime": 1781167320.528322,
+    "ast_hash": "fe8f668211f389d590a231bb6faab1bc",
+    "semantic_hash": "fe8f668211f389d590a231bb6faab1bc"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\app\\orders\\new\\page.jsx": {
+    "mtime": 1781167394.4441943,
+    "ast_hash": "12c1423bf52bf0c5c612af298b8b9216",
+    "semantic_hash": "12c1423bf52bf0c5c612af298b8b9216"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\app\\page.jsx": {
+    "mtime": 1780742248.2384653,
+    "ast_hash": "677e07368a9a14b07bdd5d0ea9404d49",
+    "semantic_hash": "677e07368a9a14b07bdd5d0ea9404d49"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\features\\page.jsx": {
+    "mtime": 1779558761.3716915,
+    "ast_hash": "0977c574181be6f18e5ab71d8c7fb5cd",
+    "semantic_hash": "0977c574181be6f18e5ab71d8c7fb5cd"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\how-it-works\\page.jsx": {
+    "mtime": 1779558761.372692,
+    "ast_hash": "71b4cc23f41db14890fe5904ccaae405",
+    "semantic_hash": "71b4cc23f41db14890fe5904ccaae405"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\layout.js": {
+    "mtime": 1779558761.372692,
+    "ast_hash": "dc617cb68a72da4c9c667554827e01c2",
+    "semantic_hash": "dc617cb68a72da4c9c667554827e01c2"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\page.js": {
+    "mtime": 1779558761.372692,
+    "ast_hash": "e80604f537e65e3619c2d6bf4efc3c46",
+    "semantic_hash": "e80604f537e65e3619c2d6bf4efc3c46"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\profile\\page.jsx": {
+    "mtime": 1779558761.373692,
+    "ast_hash": "ba0ce03b5dc9675f68f498ec3847fa91",
+    "semantic_hash": "ba0ce03b5dc9675f68f498ec3847fa91"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\app\\security\\page.jsx": {
+    "mtime": 1779558761.373692,
+    "ast_hash": "49628a72cc7397f3ede11b1f26bd026f",
+    "semantic_hash": "49628a72cc7397f3ede11b1f26bd026f"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\__init__.py": {
+    "mtime": 1779558761.374688,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\admin.py": {
+    "mtime": 1779558761.374688,
+    "ast_hash": "7f6d5984b5b703a41297216a3ab14f31",
+    "semantic_hash": "7f6d5984b5b703a41297216a3ab14f31"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\apps.py": {
+    "mtime": 1779558761.374688,
+    "ast_hash": "2dcffa263b4f2c3d96e4f652782a6bbd",
+    "semantic_hash": "2dcffa263b4f2c3d96e4f652782a6bbd"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\migrations\\0001_initial.py": {
+    "mtime": 1779558761.3756888,
+    "ast_hash": "766af92e31273b2e6e1b31b2b5f9ea6b",
+    "semantic_hash": "766af92e31273b2e6e1b31b2b5f9ea6b"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\migrations\\0002_rename_name_profile_first_name_profile_email_and_more.py": {
+    "mtime": 1779558761.3756888,
+    "ast_hash": "0d25f47f7ab7748c9974f7f524147e47",
+    "semantic_hash": "0d25f47f7ab7748c9974f7f524147e47"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\migrations\\0003_profile_nonce_chain_id_profile_nonce_domain_and_more.py": {
+    "mtime": 1779558761.3756888,
+    "ast_hash": "b7c60f9e04db684d26db2829680c3d8d",
+    "semantic_hash": "b7c60f9e04db684d26db2829680c3d8d"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\migrations\\__init__.py": {
+    "mtime": 1779558761.3756888,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\models.py": {
+    "mtime": 1779558761.3756888,
+    "ast_hash": "74c2b61d9d54cdb6840edc4e7d34a529",
+    "semantic_hash": "74c2b61d9d54cdb6840edc4e7d34a529"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\serializers.py": {
+    "mtime": 1781167084.653925,
+    "ast_hash": "508f8987e4e631a09001128050943466",
+    "semantic_hash": "508f8987e4e631a09001128050943466"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\sms.py": {
+    "mtime": 1781167071.4963136,
+    "ast_hash": "b42aa4d5a8b0c66408f6892c12c71332",
+    "semantic_hash": "b42aa4d5a8b0c66408f6892c12c71332"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\tests.py": {
+    "mtime": 1779558761.3766868,
+    "ast_hash": "e08f0582500f6562bf0a931ef9503b39",
+    "semantic_hash": "e08f0582500f6562bf0a931ef9503b39"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\urls.py": {
+    "mtime": 1781167136.3792474,
+    "ast_hash": "f9cadbdf2ebe579241c552d92598f89b",
+    "semantic_hash": "f9cadbdf2ebe579241c552d92598f89b"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\accounts\\views.py": {
+    "mtime": 1781167121.5304592,
+    "ast_hash": "8ee7d50f73efc8b02ff9c74cff52194e",
+    "semantic_hash": "8ee7d50f73efc8b02ff9c74cff52194e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\centralize\\__init__.py": {
+    "mtime": 1779558761.3766868,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\centralize\\asgi.py": {
+    "mtime": 1779558761.3766868,
+    "ast_hash": "0c98d902332ad5bd3c6b9b2b5fba9bec",
+    "semantic_hash": "0c98d902332ad5bd3c6b9b2b5fba9bec"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\centralize\\settings.py": {
+    "mtime": 1781167051.9941707,
+    "ast_hash": "767487cb937fd7236f8eeead87e882cd",
+    "semantic_hash": "767487cb937fd7236f8eeead87e882cd"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\centralize\\urls.py": {
+    "mtime": 1779558761.3776877,
+    "ast_hash": "7ef3eb8a27ddddf40266cd2d351a486f",
+    "semantic_hash": "7ef3eb8a27ddddf40266cd2d351a486f"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\centralize\\wsgi.py": {
+    "mtime": 1779558761.3776877,
+    "ast_hash": "28d4af24a205beb2154854a6ecc71c79",
+    "semantic_hash": "28d4af24a205beb2154854a6ecc71c79"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\manage.py": {
+    "mtime": 1779558761.3776877,
+    "ast_hash": "79124ecd2e0b44dfcfeee49773f3aae2",
+    "semantic_hash": "79124ecd2e0b44dfcfeee49773f3aae2"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\app\\OrderCard.jsx": {
+    "mtime": 1780741854.63572,
+    "ast_hash": "e6a9ae46f8fd63f143bf55d792aa8122",
+    "semantic_hash": "e6a9ae46f8fd63f143bf55d792aa8122"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\app\\orderUtils.js": {
+    "mtime": 1781167193.4498334,
+    "ast_hash": "503a87440147670934c3fc0e4d33ccfb",
+    "semantic_hash": "503a87440147670934c3fc0e4d33ccfb"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\home\\Hero.jsx": {
+    "mtime": 1779558761.378692,
+    "ast_hash": "b923026fcfa810e81a387aaa713237f5",
+    "semantic_hash": "b923026fcfa810e81a387aaa713237f5"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\home\\HowItWorks.jsx": {
+    "mtime": 1779558761.378692,
+    "ast_hash": "9245aee7af9b13a598d78fe03fcd5fdb",
+    "semantic_hash": "9245aee7af9b13a598d78fe03fcd5fdb"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\layout\\Footer.jsx": {
+    "mtime": 1779558761.3796923,
+    "ast_hash": "dfe8933826459d7baca52fb8b32de73b",
+    "semantic_hash": "dfe8933826459d7baca52fb8b32de73b"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\layout\\Header.jsx": {
+    "mtime": 1779558761.3796923,
+    "ast_hash": "db7b30e7ead1a2dd75d1f99638681284",
+    "semantic_hash": "db7b30e7ead1a2dd75d1f99638681284"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\components\\web3\\Web3Provider.jsx": {
+    "mtime": 1779558761.3796923,
+    "ast_hash": "bb7b5599fdc3c8e7b6d817aedc0cf824",
+    "semantic_hash": "bb7b5599fdc3c8e7b6d817aedc0cf824"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\eslint.config.mjs": {
+    "mtime": 1779558761.3806922,
+    "ast_hash": "c203a0a3beda61d4f5f8befdaf454334",
+    "semantic_hash": "c203a0a3beda61d4f5f8befdaf454334"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\build-info\\34943c211a30ba8ce65ea2098964bd44.json": {
+    "mtime": 1781201152.7373827,
+    "ast_hash": "bc0153277186f02647e5641ab650534c",
+    "semantic_hash": "bc0153277186f02647e5641ab650534c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\MockUSD.sol\\MockUSD.dbg.json": {
+    "mtime": 1781201152.7563922,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\MockUSD.sol\\MockUSD.json": {
+    "mtime": 1781201152.7563922,
+    "ast_hash": "7a1dac75775e37bee78fe823aa840267",
+    "semantic_hash": "7a1dac75775e37bee78fe823aa840267"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\IERC20.dbg.json": {
+    "mtime": 1781201152.7583845,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\IERC20.json": {
+    "mtime": 1781201152.7563922,
+    "ast_hash": "1312806db2135333bd5b13d0719e51c4",
+    "semantic_hash": "1312806db2135333bd5b13d0719e51c4"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\OwnableLite.dbg.json": {
+    "mtime": 1781201152.7633855,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\OwnableLite.json": {
+    "mtime": 1781201152.7613966,
+    "ast_hash": "1245a5ce67ea57cbb2efe3352a1ee7bb",
+    "semantic_hash": "1245a5ce67ea57cbb2efe3352a1ee7bb"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\PausableLite.dbg.json": {
+    "mtime": 1781201152.7633855,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\PausableLite.json": {
+    "mtime": 1781201152.7613966,
+    "ast_hash": "378da6d2ea58e169b340c13278e8f08e",
+    "semantic_hash": "378da6d2ea58e169b340c13278e8f08e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\ReentrancyGuardLite.dbg.json": {
+    "mtime": 1781201152.7663898,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\ReentrancyGuardLite.json": {
+    "mtime": 1781201152.7663898,
+    "ast_hash": "98e3c8fb62602ad3a3b1d4d0e9ac418d",
+    "semantic_hash": "98e3c8fb62602ad3a3b1d4d0e9ac418d"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\SafeERC20Lite.dbg.json": {
+    "mtime": 1781201152.767391,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\SafeERC20Lite.json": {
+    "mtime": 1781201152.767391,
+    "ast_hash": "c1595ea6a53b36a68185d88dc9cf2a3f",
+    "semantic_hash": "c1595ea6a53b36a68185d88dc9cf2a3f"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\SupplyGuarantee.dbg.json": {
+    "mtime": 1781201152.7684064,
+    "ast_hash": "6507780f417cf8700211654db03e707c",
+    "semantic_hash": "6507780f417cf8700211654db03e707c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\artifacts\\contracts\\SupplyGuarantee.sol\\SupplyGuarantee.json": {
+    "mtime": 1781201152.7684064,
+    "ast_hash": "084a5fb14b9acfcb305abda116a9bc2d",
+    "semantic_hash": "084a5fb14b9acfcb305abda116a9bc2d"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\cache\\solidity-files-cache.json": {
+    "mtime": 1781201645.6523228,
+    "ast_hash": "e6b33661f23af7bdda2e01d28267ba3d",
+    "semantic_hash": "e6b33661f23af7bdda2e01d28267ba3d"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\hardhat.config.js": {
+    "mtime": 1781200885.1266856,
+    "ast_hash": "d02710deba508b2700ce355f3395c1cc",
+    "semantic_hash": "d02710deba508b2700ce355f3395c1cc"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\package.json": {
+    "mtime": 1781200254.4057984,
+    "ast_hash": "f80eaca4dea08c5b648c9583c0df3493",
+    "semantic_hash": "f80eaca4dea08c5b648c9583c0df3493"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\hardhat\\scripts\\deploy.js": {
+    "mtime": 1781200304.2342274,
+    "ast_hash": "17f0e1951407c1764719cbb57fadab00",
+    "semantic_hash": "17f0e1951407c1764719cbb57fadab00"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\jsconfig.json": {
+    "mtime": 1779558761.3806922,
+    "ast_hash": "9ae5be88a4ee800190cf34ba5b4d9d89",
+    "semantic_hash": "9ae5be88a4ee800190cf34ba5b4d9d89"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\abi\\MockUSD.json": {
+    "mtime": 1779558761.3806922,
+    "ast_hash": "39a4a7ee26bd02398236d409b9a5de9d",
+    "semantic_hash": "39a4a7ee26bd02398236d409b9a5de9d"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\abi\\SupplyGuarantee.json": {
+    "mtime": 1781201677.2447033,
+    "ast_hash": "294a3f5bd37e4b4f4cb54d4108062341",
+    "semantic_hash": "294a3f5bd37e4b4f4cb54d4108062341"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\api.js": {
+    "mtime": 1781167168.8736649,
+    "ast_hash": "847d1656141729e1cbd933fcea26e5ea",
+    "semantic_hash": "847d1656141729e1cbd933fcea26e5ea"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\graph\\client.ts": {
+    "mtime": 1779558761.381692,
+    "ast_hash": "6c722a3a5beb1d127585623253685def",
+    "semantic_hash": "6c722a3a5beb1d127585623253685def"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\site.js": {
+    "mtime": 1779558761.381692,
+    "ast_hash": "ec8d18522f5ebfc3b669685f506aa4f9",
+    "semantic_hash": "ec8d18522f5ebfc3b669685f506aa4f9"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\web3\\abi.js": {
+    "mtime": 1780744078.725081,
+    "ast_hash": "5c75e65f9885a890127eb01b277f5772",
+    "semantic_hash": "5c75e65f9885a890127eb01b277f5772"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\web3\\bytes.js": {
+    "mtime": 1779558761.381692,
+    "ast_hash": "3901fd7c0968cb5cfc99a8d0406c1dbd",
+    "semantic_hash": "3901fd7c0968cb5cfc99a8d0406c1dbd"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\web3\\config.js": {
+    "mtime": 1779558761.381692,
+    "ast_hash": "e817c2d33721588ca35310efe2eb6695",
+    "semantic_hash": "e817c2d33721588ca35310efe2eb6695"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\web3\\getLogsChunked.js": {
+    "mtime": 1779558761.3826923,
+    "ast_hash": "73b1059aeab10905d6daef936889e58a",
+    "semantic_hash": "73b1059aeab10905d6daef936889e58a"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\lib\\web3\\index.js": {
+    "mtime": 1779558761.3826923,
+    "ast_hash": "68900e268bcc2e40ee635a022a7909b5",
+    "semantic_hash": "68900e268bcc2e40ee635a022a7909b5"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\next.config.mjs": {
+    "mtime": 1779558761.3826923,
+    "ast_hash": "99886290e1a0c7086d1c2f6c37e48dd0",
+    "semantic_hash": "99886290e1a0c7086d1c2f6c37e48dd0"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\package.json": {
+    "mtime": 1779558761.383693,
+    "ast_hash": "94147fc77254fde202d564db60948478",
+    "semantic_hash": "94147fc77254fde202d564db60948478"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\postcss.config.mjs": {
+    "mtime": 1779558761.383693,
+    "ast_hash": "481fac0fdecd70e1821cc30b86030c1a",
+    "semantic_hash": "481fac0fdecd70e1821cc30b86030c1a"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\abis\\SupplyGuarantee.json": {
+    "mtime": 1781201677.2267046,
+    "ast_hash": "294a3f5bd37e4b4f4cb54d4108062341",
+    "semantic_hash": "294a3f5bd37e4b4f4cb54d4108062341"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\generated\\SupplyGuarantee\\SupplyGuarantee.ts": {
+    "mtime": 1781202099.6940362,
+    "ast_hash": "2d653c36a638937072363c26a23ccd79",
+    "semantic_hash": "2d653c36a638937072363c26a23ccd79"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\generated\\schema.ts": {
+    "mtime": 1781202099.7700508,
+    "ast_hash": "9d5093355eaed5fb56249feea7ab18fc",
+    "semantic_hash": "9d5093355eaed5fb56249feea7ab18fc"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\networks.json": {
+    "mtime": 1781201677.219706,
+    "ast_hash": "25306d2adaee597e83b0f0bf6833ce99",
+    "semantic_hash": "25306d2adaee597e83b0f0bf6833ce99"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\package.json": {
+    "mtime": 1779558761.3866925,
+    "ast_hash": "9b96c04d68b71bed1d5115b58b0ae8a3",
+    "semantic_hash": "9b96c04d68b71bed1d5115b58b0ae8a3"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\src\\supply-guarantee.ts": {
+    "mtime": 1780742299.327439,
+    "ast_hash": "9053a27aa16c3aeef85e369b4eb3b877",
+    "semantic_hash": "9053a27aa16c3aeef85e369b4eb3b877"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\tests\\supply-guarantee-utils.ts": {
+    "mtime": 1779558761.3876922,
+    "ast_hash": "c1f12dfea63523236bafcddf7ddbf4e0",
+    "semantic_hash": "c1f12dfea63523236bafcddf7ddbf4e0"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\tests\\supply-guarantee.test.ts": {
+    "mtime": 1779558761.3876922,
+    "ast_hash": "818c7d75cfd428c98e93f058a0fa9a61",
+    "semantic_hash": "818c7d75cfd428c98e93f058a0fa9a61"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\tsconfig.json": {
+    "mtime": 1779558761.3876922,
+    "ast_hash": "7f72796a227c6ec68c439e6bd8c5d117",
+    "semantic_hash": "7f72796a227c6ec68c439e6bd8c5d117"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\CLAUDE.md": {
+    "mtime": 1781263072.4372623,
+    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\README.md": {
+    "mtime": 1779627993.4457614,
+    "ast_hash": "1c78af3a6f8ee5c6a3049d8279b914db",
+    "semantic_hash": "1c78af3a6f8ee5c6a3049d8279b914db"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\requirements.txt": {
+    "mtime": 1779558761.3776877,
+    "ast_hash": "7de109f847134c46db78fcc4567a2965",
+    "semantic_hash": "7de109f847134c46db78fcc4567a2965"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\docker-compose.yml": {
+    "mtime": 1779558761.3856924,
+    "ast_hash": "0aca745bd72c4e66e8b9b4ae0321a4b2",
+    "semantic_hash": "0aca745bd72c4e66e8b9b4ae0321a4b2"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\supp\\subgraph.yaml": {
+    "mtime": 1781201677.2217054,
+    "ast_hash": "58a665d9577c501453c71451be0c0f09",
+    "semantic_hash": "58a665d9577c501453c71451be0c0f09"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\backend\\centralize\\media\\profiles\\0xd2701e19f9575dd7b911f5bdf684efc0ace934cb\\D_A.jpg": {
+    "mtime": 1779614215.9997177,
+    "ast_hash": "d35a085b89bff831ac4c2593c5fb728c",
+    "semantic_hash": "d35a085b89bff831ac4c2593c5fb728c"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\public\\file.svg": {
+    "mtime": 1779558761.3846924,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\public\\globe.svg": {
+    "mtime": 1779558761.3846924,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": "2aaafa6a49b6563925fe440891e32717"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\public\\next.svg": {
+    "mtime": 1779558761.3846924,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": "8e061864f388b47f33a1c3780831193e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\public\\vercel.svg": {
+    "mtime": 1779558761.3846924,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": "c0af2f507b369b085b35ef4bbe3bcf1e"
+  },
+  "E:\\Projects\\Blockchain\\supply-guarantee-dapp\\public\\window.svg": {
+    "mtime": 1779558761.3846924,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": "a2760511c65806022ad20adf74370ff3"
+  }
+}

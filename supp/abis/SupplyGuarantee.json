@@ -1,7 +1,11 @@
 [
   {
     "inputs": [
-      { "internalType": "address", "name": "initialOwner", "type": "address" }
+      {
+        "internalType": "address",
+        "name": "initialOwner",
+        "type": "address"
+      }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
@@ -377,7 +381,7 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "byBank",
+        "name": "by",
         "type": "address"
       }
     ],
@@ -414,7 +418,7 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "byBank",
+        "name": "by",
         "type": "address"
       }
     ],
@@ -499,12 +503,28 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "bytes32", "name": "name", "type": "bytes32" },
-      { "internalType": "uint16", "name": "bps", "type": "uint16" },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "name",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint16",
+        "name": "bps",
+        "type": "uint16"
+      },
       {
         "components": [
-          { "internalType": "uint256", "name": "planBy", "type": "uint256" },
+          {
+            "internalType": "uint256",
+            "name": "planBy",
+            "type": "uint256"
+          },
           {
             "internalType": "uint256",
             "name": "deliveryBy",
@@ -533,8 +553,16 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "approveAdvance",
     "outputs": [],
@@ -543,9 +571,21 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "approveInspection",
     "outputs": [],
@@ -554,9 +594,21 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "approveMilestonePayment",
     "outputs": [],
@@ -565,9 +617,21 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "approveShipmentPlan",
     "outputs": [],
@@ -576,39 +640,39 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "note",
+        "type": "string"
+      }
     ],
-    "name": "bankPayAdvance",
+    "name": "cancelByAdmin",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" }
-    ],
-    "name": "bankPayMilestone",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "string", "name": "note", "type": "string" }
-    ],
-    "name": "cancelByArbiter",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "confirmDelivery",
     "outputs": [],
@@ -617,15 +681,41 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "buyer", "type": "address" },
-      { "internalType": "address", "name": "seller", "type": "address" },
-      { "internalType": "address", "name": "carrier", "type": "address" },
-      { "internalType": "address", "name": "inspector", "type": "address" },
-      { "internalType": "address", "name": "bank", "type": "address" },
-      { "internalType": "address", "name": "arbiter", "type": "address" },
-      { "internalType": "address", "name": "token", "type": "address" },
-      { "internalType": "uint256", "name": "price", "type": "uint256" },
-      { "internalType": "uint16", "name": "advanceBps", "type": "uint16" },
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "carrier",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "inspector",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "advanceBps",
+        "type": "uint16"
+      },
       {
         "components": [
           {
@@ -640,30 +730,77 @@
       }
     ],
     "name": "createOrderHeader",
-    "outputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint256", "name": "amt", "type": "uint256" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
     ],
-    "name": "fund",
+    "name": "fundAdvance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      }
+    ],
+    "name": "fundMilestone",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      }
     ],
     "name": "getMilestone",
     "outputs": [
-      { "internalType": "bytes32", "name": "name", "type": "bytes32" },
-      { "internalType": "uint16", "name": "bps", "type": "uint16" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      {
+        "internalType": "bytes32",
+        "name": "name",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint16",
+        "name": "bps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
       {
         "internalType": "enum SupplyGuarantee.MilestoneStage",
         "name": "stage",
@@ -671,7 +808,11 @@
       },
       {
         "components": [
-          { "internalType": "uint256", "name": "planBy", "type": "uint256" },
+          {
+            "internalType": "uint256",
+            "name": "planBy",
+            "type": "uint256"
+          },
           {
             "internalType": "uint256",
             "name": "deliveryBy",
@@ -694,9 +835,21 @@
       },
       {
         "components": [
-          { "internalType": "bytes32", "name": "hash32", "type": "bytes32" },
-          { "internalType": "uint64", "name": "at", "type": "uint64" },
-          { "internalType": "address", "name": "by", "type": "address" }
+          {
+            "internalType": "bytes32",
+            "name": "hash32",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
         ],
         "internalType": "struct SupplyGuarantee.DocSlot",
         "name": "plan",
@@ -704,9 +857,21 @@
       },
       {
         "components": [
-          { "internalType": "bytes32", "name": "hash32", "type": "bytes32" },
-          { "internalType": "uint64", "name": "at", "type": "uint64" },
-          { "internalType": "address", "name": "by", "type": "address" }
+          {
+            "internalType": "bytes32",
+            "name": "hash32",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
         ],
         "internalType": "struct SupplyGuarantee.DocSlot",
         "name": "planApproval",
@@ -714,9 +879,21 @@
       },
       {
         "components": [
-          { "internalType": "bytes32", "name": "hash32", "type": "bytes32" },
-          { "internalType": "uint64", "name": "at", "type": "uint64" },
-          { "internalType": "address", "name": "by", "type": "address" }
+          {
+            "internalType": "bytes32",
+            "name": "hash32",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
         ],
         "internalType": "struct SupplyGuarantee.DocSlot",
         "name": "delivery",
@@ -724,9 +901,21 @@
       },
       {
         "components": [
-          { "internalType": "bytes32", "name": "hash32", "type": "bytes32" },
-          { "internalType": "uint64", "name": "at", "type": "uint64" },
-          { "internalType": "address", "name": "by", "type": "address" }
+          {
+            "internalType": "bytes32",
+            "name": "hash32",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
         ],
         "internalType": "struct SupplyGuarantee.DocSlot",
         "name": "inspection",
@@ -734,9 +923,21 @@
       },
       {
         "components": [
-          { "internalType": "bytes32", "name": "hash32", "type": "bytes32" },
-          { "internalType": "uint64", "name": "at", "type": "uint64" },
-          { "internalType": "address", "name": "by", "type": "address" }
+          {
+            "internalType": "bytes32",
+            "name": "hash32",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "at",
+            "type": "uint64"
+          },
+          {
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
         ],
         "internalType": "struct SupplyGuarantee.DocSlot",
         "name": "buyerApproval",
@@ -747,7 +948,13 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "getOrderDeadline",
     "outputs": [
       {
@@ -767,36 +974,135 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getOrderEscrow",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "escrowed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "advanceFunded",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "advancePaid",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "getOrderMoney",
     "outputs": [
-      { "internalType": "address", "name": "token", "type": "address" },
-      { "internalType": "uint256", "name": "price", "type": "uint256" },
-      { "internalType": "uint16", "name": "advanceBps", "type": "uint16" },
-      { "internalType": "uint256", "name": "advance", "type": "uint256" },
-      { "internalType": "uint256", "name": "deposited", "type": "uint256" },
-      { "internalType": "bool", "name": "mLocked", "type": "bool" },
-      { "internalType": "uint8", "name": "mCount", "type": "uint8" },
-      { "internalType": "uint8", "name": "mPaidCount", "type": "uint8" },
-      { "internalType": "uint16", "name": "mTotalBps", "type": "uint16" }
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "advanceBps",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint256",
+        "name": "advance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deposited",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "mLocked",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint8",
+        "name": "mCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "mPaidCount",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint16",
+        "name": "mTotalBps",
+        "type": "uint16"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "getOrderParties",
     "outputs": [
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "address", "name": "", "type": "address" },
-      { "internalType": "address", "name": "", "type": "address" }
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "lockMilestones",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -805,12 +1111,24 @@
   {
     "inputs": [],
     "name": "nextOrderId",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "orderStageOf",
     "outputs": [
       {
@@ -825,7 +1143,13 @@
   {
     "inputs": [],
     "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -838,8 +1162,16 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "string", "name": "reason", "type": "string" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
     ],
     "name": "rejectCurrent",
     "outputs": [],
@@ -848,8 +1180,16 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "requestAdvance",
     "outputs": [],
@@ -858,13 +1198,21 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
       {
         "internalType": "enum SupplyGuarantee.OrderStage",
         "name": "next",
         "type": "uint8"
       },
-      { "internalType": "string", "name": "note", "type": "string" }
+      {
+        "internalType": "string",
+        "name": "note",
+        "type": "string"
+      }
     ],
     "name": "resolveDisputeTo",
     "outputs": [],
@@ -873,9 +1221,21 @@
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "id", "type": "uint256" },
-      { "internalType": "uint8", "name": "idx", "type": "uint8" },
-      { "internalType": "bytes32", "name": "h", "type": "bytes32" }
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "idx",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "h",
+        "type": "bytes32"
+      }
     ],
     "name": "submitShipmentPlan",
     "outputs": [],
@@ -883,7 +1243,13 @@
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "n", "type": "address" }],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "n",
+        "type": "address"
+      }
+    ],
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",

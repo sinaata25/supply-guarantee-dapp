@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -141,6 +142,15 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+# Wallet-based sessions: the SIWE signature is the real auth ceremony, so a
+# short (default 5-min) access token just causes surprise 401s mid-session.
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+}
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "My API",
     "VERSION": "1.0.0",
@@ -151,3 +161,30 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+# ---- IPPanel pattern SMS ----
+# Override any of these via environment variables in production.
+IPPANEL_ENABLED = os.environ.get("IPPANEL_ENABLED", "1") not in ("0", "false", "False", "")
+IPPANEL_API_KEY = os.environ.get(
+    "IPPANEL_API_KEY",
+    "YTEyYmQ5ZjctOTcwMy00MzEyLTg5Y2EtMDc1NmRkYjIzZjE0YjQ0Y2YxMGY3NDk2YTQ0YjY2NDY2MDdjYjA1ZjcxMDE=",
+)
+IPPANEL_BASE_URL = os.environ.get("IPPANEL_BASE_URL", "https://edge.ippanel.com/v1/api/send")
+IPPANEL_FROM_NUMBER = os.environ.get("IPPANEL_FROM_NUMBER", "+983000505")
+IPPANEL_PATTERN_CODE = os.environ.get("IPPANEL_PATTERN_CODE", "pktc6bst3amo275")
+
+# ---- Pinata IPFS ----
+# Auth: either PINATA_JWT (preferred) or PINATA_API_KEY + PINATA_API_SECRET.
+PINATA_API_KEY = os.environ.get("PINATA_API_KEY", "d3eb4d1a1159b265e8a0")
+PINATA_API_SECRET = os.environ.get(
+    "PINATA_API_SECRET",
+    "b9d836a5a313ccebcec3cb855da0baa6cda9a3c6c3420a5290e226f62c1c9a95",
+)
+PINATA_JWT = os.environ.get(
+    "PINATA_JWT",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJhNDY0YjE2Mi01OTA0LTQ0MmMtOTAxNS00ZmJiOTM5Zjc3NWYiLCJlbWFpbCI6InNpbmEuYXRhMjVAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiRlJBMSJ9LHsiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiTllDMSJ9XSwidmVyc2lvbiI6MX0sIm1mYV9lbmFibGVkIjpmYWxzZSwic3RhdHVzIjoiQUNUSVZFIn0sImF1dGhlbnRpY2F0aW9uVHlwZSI6InNjb3BlZEtleSIsInNjb3BlZEtleUtleSI6ImQzZWI0ZDFhMTE1OWIyNjVlOGEwIiwic2NvcGVkS2V5U2VjcmV0IjoiYjlkODM2YTVhMzEzY2NlYmNlYzNjYjg1NWRhMGJhYTZjZGE5YTNjNmMzNDIwYTUyOTBlMjI2ZjYyYzFjOWE5NSIsImV4cCI6MTgxMjgwNTk4NX0.4ZNz_pGOExVf7pQO30Fm0khppqGOVPG2YrP9jAdnbOo",
+)
+PINATA_PIN_URL = os.environ.get("PINATA_PIN_URL", "https://api.pinata.cloud/pinning/pinFileToIPFS")
+PINATA_GATEWAY = os.environ.get("PINATA_GATEWAY", "https://gateway.pinata.cloud/ipfs")
+# 25 MB upload cap for documents/photos
+IPFS_MAX_UPLOAD_BYTES = int(os.environ.get("IPFS_MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))

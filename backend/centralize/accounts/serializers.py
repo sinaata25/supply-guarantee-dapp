@@ -51,3 +51,9 @@ class PublicProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ["wallet_address", "email"]
+
+
+class NotifyOrderStageSerializer(serializers.Serializer):
+    wallet_address = serializers.CharField(help_text="Recipient wallet (the next actor)")
+    orderstage = serializers.CharField(help_text="Persian status injected into the SMS pattern")
+    order_id = serializers.CharField(required=False, allow_blank=True)

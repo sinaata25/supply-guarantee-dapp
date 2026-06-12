@@ -15,7 +15,11 @@ from web3 import Web3
 
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
+from django.conf import settings
+
 from .models import Profile
+from .sms import send_pattern_sms
+from .ipfs import pin_file, pinata_configured
 from .serializers import (
     NonceRequestSerializer,
     NonceResponseSerializer,
@@ -23,6 +27,7 @@ from .serializers import (
     TokenPairSerializer,
     ProfileSerializer,
     PublicProfileSerializer,
+    NotifyOrderStageSerializer,
 )
 
 User = get_user_model()
@@ -225,6 +230,88 @@ class MeView(APIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
+
+
+class NotifyOrderStageView(APIView):
+    """Send a pattern SMS to the next actor when an order's stage changes.
+
+    The frontend computes who must act next (their wallet address) and the
+    Persian status text, then calls this endpoint. We look up that wallet's
+    profile and, only if a phone number is on file, send the SMS.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=["Notify"],
+        request=NotifyOrderStageSerializer,
+        responses={200: OpenApiResponse(description="{ sent: bool, reason?: str }")},
+        summary="SMS the next actor about an order stage change",
+    )
+    def post(self, request):
+        s = NotifyOrderStageSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+
+        raw_address = s.validated_data["wallet_address"]
+        orderstage = s.validated_data["orderstage"]
+
+        try:
+            addr = normalize_address(raw_address)
+        except Exception:
+            return Response({"detail": "invalid address"}, status=400)
+
+        try:
+            profile = Profile.objects.get(wallet_address=addr)
+        except Profile.DoesNotExist:
+            return Response({"sent": False, "reason": "no profile"})
+
+        phone = (profile.phone_number or "").strip()
+        if not phone:
+            return Response({"sent": False, "reason": "no phone"})
+
+        result = send_pattern_sms(to=phone, params={"orderstage": orderstage})
+        if result.get("ok"):
+            return Response({"sent": True})
+        return Response({"sent": False, "reason": result.get("detail")})
+
+
+class IpfsUploadView(APIView):
+    """Upload a document/photo to IPFS via Pinata (server-side credentials).
+
+    The frontend sends multipart/form-data with a `file` field; we pin it and
+    return the CIDv0 plus a gateway URL. The 32-byte sha2-256 digest inside the
+    CID is what gets anchored on-chain as the DocSlot hash.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=["IPFS"],
+        responses={200: OpenApiResponse(description="{ cid, gateway_url }")},
+        summary="Pin a file to IPFS via Pinata",
+    )
+    def post(self, request):
+        if not pinata_configured():
+            return Response(
+                {"detail": "IPFS uploads not configured on the server (missing Pinata secret/JWT)."},
+                status=503,
+            )
+
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"detail": "file field is required"}, status=400)
+        if f.size > settings.IPFS_MAX_UPLOAD_BYTES:
+            mb = settings.IPFS_MAX_UPLOAD_BYTES // (1024 * 1024)
+            return Response({"detail": f"file too large (max {mb} MB)"}, status=400)
+
+        uploader = (request.user.username or "").lower()
+        result = pin_file(file_obj=f, filename=f.name, uploader=uploader)
+        if not result.get("ok"):
+            return Response({"detail": result.get("detail")}, status=502)
+
+        cid = result["cid"]
+        return Response({"cid": cid, "gateway_url": f"{settings.PINATA_GATEWAY}/{cid}"})
 
 
 class ProfileListView(APIView):

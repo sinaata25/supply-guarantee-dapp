@@ -10,8 +10,8 @@ export const ROLE_LABELS = {
 // Matches the enum inside the smart contract
 export const ORDER_STAGE = {
   Created: 0,
-  Funded: 1,
-  AdvanceRequested: 2,
+  AdvanceRequested: 1,
+  AdvanceFunded: 2,
   InMilestones: 3,
   Finalized: 4,
   Disputed: 5,
@@ -23,9 +23,10 @@ export const MILESTONE_STAGE = {
   NotStarted: 0,
   Planned: 1,
   PlanApproved: 2,
-  Delivered: 3,
-  InspectionApproved: 4,
-  Paid: 5,
+  Funded: 3,
+  Delivered: 4,
+  InspectionApproved: 5,
+  Paid: 6,
 };
 
 export function shortAddr(a) {
@@ -34,11 +35,11 @@ export function shortAddr(a) {
 }
 
 export function stageLabel(stageNum) {
-  // enum OrderStage { Created, Funded, AdvanceRequested, InMilestones, Finalized, Disputed, Cancelled }
+  // enum OrderStage { Created, AdvanceRequested, AdvanceFunded, InMilestones, Finalized, Disputed, Cancelled }
   const m = {
     0: "Created",
-    1: "Funded",
-    2: "Advance Requested",
+    1: "Advance Requested",
+    2: "Advance Funded",
     3: "In Milestones",
     4: "Finalized",
     5: "Disputed",
@@ -53,13 +54,53 @@ export function stageTone(stageNum) {
   if (s === ORDER_STAGE.Disputed) return "red";
   if (s === ORDER_STAGE.Cancelled) return "gray";
   if (s === ORDER_STAGE.InMilestones) return "blue";
-  if (s === ORDER_STAGE.Funded || s === ORDER_STAGE.AdvanceRequested) return "amber";
+  if (s === ORDER_STAGE.AdvanceRequested || s === ORDER_STAGE.AdvanceFunded) return "amber";
   return "gray";
 }
 
 export function fmtBigint(x) {
   if (x === null || x === undefined) return "—";
   return x.toString();
+}
+
+/**
+ * Given an on-chain order object ({ buyer, seller, carrier, inspector, stage, mLocked })
+ * and its milestones array ([{ idx, stage }]), returns who must act next and a Persian
+ * `orderstage` label describing the awaited action — or null in terminal/blocked states.
+ *
+ * Used to notify (e.g. via SMS) the person whose turn it is after a stage change.
+ */
+export function nextActorNotification(order, milestones) {
+  if (!order) return null;
+  const st = Number(order.stage);
+  const ms = milestones || [];
+
+  if (st === ORDER_STAGE.Created) {
+    if (!order.mLocked) return null;
+    return { address: order.seller, orderstage: "ثبت درخواست پیش‌پرداخت" };
+  }
+  if (st === ORDER_STAGE.AdvanceRequested) {
+    return { address: order.buyer, orderstage: "واریز پیش‌پرداخت" };
+  }
+  if (st === ORDER_STAGE.AdvanceFunded) {
+    return { address: order.buyer, orderstage: "تأیید و آزادسازی پیش‌پرداخت" };
+  }
+
+  if (st === ORDER_STAGE.InMilestones) {
+    const cur = ms.find((m) => Number(m.stage) !== MILESTONE_STAGE.Paid);
+    if (!cur) return null;
+    const s = Number(cur.stage);
+    if (s === MILESTONE_STAGE.NotStarted) return { address: order.seller, orderstage: "ثبت برنامه ارسال" };
+    if (s === MILESTONE_STAGE.Planned) return { address: order.buyer, orderstage: "تأیید برنامه ارسال" };
+    if (s === MILESTONE_STAGE.PlanApproved) return { address: order.buyer, orderstage: "واریز وجه این مرحله" };
+    if (s === MILESTONE_STAGE.Funded) return { address: order.seller, orderstage: "ثبت تحویل کالا" };
+    if (s === MILESTONE_STAGE.Delivered) return { address: order.inspector, orderstage: "تأیید بازرسی" };
+    if (s === MILESTONE_STAGE.InspectionApproved) return { address: order.buyer, orderstage: "تأیید و پرداخت نهایی مرحله" };
+    return null;
+  }
+
+  // Finalized / Disputed / Cancelled => no next actor to notify
+  return null;
 }
 
 // ---------- Next: Next action / who should do what ----------
@@ -144,20 +185,7 @@ export function nextActionForOrder(o) {
       };
     }
 
-    // If locked => buyer funds the order
-    const requiredRoles = ["buyer"];
-    const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
-    return {
-      title: "Fund the order",
-      detail: isMyTurn ? "It's your turn: fund the order." : "Buyer must deposit the order funds.",
-      tone: isMyTurn ? "blue" : "gray",
-      requiredRoles,
-      isMyTurn,
-    };
-  }
-
-  // Funded => seller requests advance
-  if (st === ORDER_STAGE.Funded) {
+    // Locked & has an advance => seller requests the advance to start
     const requiredRoles = ["seller"];
     const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
     return {
@@ -169,15 +197,30 @@ export function nextActionForOrder(o) {
     };
   }
 
-  // AdvanceRequested => buyer approves & pays advance
+  // AdvanceRequested => buyer funds the advance (locks exactly the advance amount)
   if (st === ORDER_STAGE.AdvanceRequested) {
     const requiredRoles = ["buyer"];
     const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
     return {
-      title: "Buyer approves & pays advance",
+      title: "Buyer funds the advance",
       detail: isMyTurn
-        ? "It's your turn: approve the advance (the payment is sent automatically)."
-        : "Buyer must approve and pay the advance.",
+        ? "It's your turn: lock exactly the advance amount in escrow."
+        : "Buyer must lock the advance amount in escrow.",
+      tone: isMyTurn ? "blue" : "gray",
+      requiredRoles,
+      isMyTurn,
+    };
+  }
+
+  // AdvanceFunded => buyer approves & releases the advance to the seller
+  if (st === ORDER_STAGE.AdvanceFunded) {
+    const requiredRoles = ["buyer"];
+    const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
+    return {
+      title: "Buyer approves & releases advance",
+      detail: isMyTurn
+        ? "It's your turn: approve to release the escrowed advance to the seller."
+        : "Buyer must approve and release the advance.",
       tone: isMyTurn ? "blue" : "gray",
       requiredRoles,
       isMyTurn,
@@ -230,6 +273,20 @@ export function nextActionForOrder(o) {
     }
 
     if (msStage === MILESTONE_STAGE.PlanApproved) {
+      const requiredRoles = ["buyer"];
+      const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
+      return {
+        title: `${msName}: Fund milestone`,
+        detail: isMyTurn
+          ? "It's your turn: lock exactly this milestone's amount in escrow."
+          : "Buyer must lock this milestone's amount in escrow.",
+        tone: isMyTurn ? "blue" : "gray",
+        requiredRoles,
+        isMyTurn,
+      };
+    }
+
+    if (msStage === MILESTONE_STAGE.Funded) {
       const requiredRoles = ["seller", "carrier"];
       const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
       return {
@@ -259,10 +316,10 @@ export function nextActionForOrder(o) {
       const requiredRoles = ["buyer"];
       const isMyTurn = hasAnyRole(o?.roles, requiredRoles);
       return {
-        title: `${msName}: Buyer approves & pays`,
+        title: `${msName}: Approve & release payment`,
         detail: isMyTurn
-          ? "It's your turn: approve the milestone (the payment is sent automatically)."
-          : "Buyer must approve and pay this milestone.",
+          ? "It's your turn: approve to release the escrowed amount to the seller."
+          : "Buyer must approve and release this milestone's payment.",
         tone: isMyTurn ? "blue" : "gray",
         requiredRoles,
         isMyTurn,

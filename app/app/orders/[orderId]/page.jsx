@@ -19,6 +19,10 @@ import {
 import { ethers } from "ethers";
 import { useWeb3 } from "@/components/web3/Web3Provider";
 import { WEB3_CONFIG } from "@/lib/web3/config";
+import { notifyOrderStage } from "@/lib/api";
+import { nextActorNotification } from "@/components/app/orderUtils";
+import { uploadToIpfs, ipfsUrlFromBytes32 } from "@/lib/ipfs";
+import { getLogsChunked } from "@/lib/web3/getLogsChunked";
 
 /* ---------------- Token ABI (YOUR ABI) ---------------- */
 const TOKEN_ABI = [
@@ -57,8 +61,8 @@ const TOKEN_ABI = [
 /* ---------------- Contract enums (MATCH SOLIDITY) ---------------- */
 const ORDER_STAGE = {
   Created: 0,
-  Funded: 1,
-  AdvanceRequested: 2,
+  AdvanceRequested: 1,
+  AdvanceFunded: 2,
   InMilestones: 3,
   Finalized: 4,
   Disputed: 5,
@@ -69,9 +73,10 @@ const MS_STAGE = {
   NotStarted: 0,
   Planned: 1,
   PlanApproved: 2,
-  Delivered: 3,
-  InspectionApproved: 4,
-  Paid: 5,
+  Funded: 3,
+  Delivered: 4,
+  InspectionApproved: 5,
+  Paid: 6,
 };
 
 /* ---------------- utils ---------------- */
@@ -128,8 +133,8 @@ function toBytes32OrNull(input) {
 function stageBadge(stage) {
   const s = Number(stage);
   if (s === ORDER_STAGE.Created) return { label: "Created", tone: "neutral" };
-  if (s === ORDER_STAGE.Funded) return { label: "Funded", tone: "good" };
   if (s === ORDER_STAGE.AdvanceRequested) return { label: "Advance requested", tone: "warn" };
+  if (s === ORDER_STAGE.AdvanceFunded) return { label: "Advance funded", tone: "warn" };
   if (s === ORDER_STAGE.InMilestones) return { label: "In milestones", tone: "good" };
   if (s === ORDER_STAGE.Finalized) return { label: "Finalized", tone: "good" };
   if (s === ORDER_STAGE.Disputed) return { label: "Disputed", tone: "bad" };
@@ -137,11 +142,27 @@ function stageBadge(stage) {
   return { label: `Stage ${s}`, tone: "neutral" };
 }
 
+/* DocType enum in the contract */
+const DOC_TYPE_LABELS = {
+  0: "Advance request",
+  1: "Advance approval",
+  2: "Shipment plan",
+  3: "Plan approval",
+  4: "Delivery confirmation",
+  5: "Inspection report",
+  6: "Buyer final approval",
+};
+
+function docTypeLabel(t) {
+  return DOC_TYPE_LABELS[Number(t)] ?? `Doc type ${t}`;
+}
+
 function msLabel(v) {
   const s = Number(v);
   if (s === MS_STAGE.NotStarted) return "Not started";
   if (s === MS_STAGE.Planned) return "Planned";
   if (s === MS_STAGE.PlanApproved) return "Plan approved";
+  if (s === MS_STAGE.Funded) return "Funded";
   if (s === MS_STAGE.Delivered) return "Delivered";
   if (s === MS_STAGE.InspectionApproved) return "Inspection approved";
   if (s === MS_STAGE.Paid) return "Paid";
@@ -157,18 +178,18 @@ function nextActionFromChain(o, milestones, me) {
 
   if (stage === ORDER_STAGE.Created) {
     if (!o.mLocked) return { isMyTurn: false, title: "Waiting milestones lock", detail: "Configurator must lock milestones first." };
-    if (isBuyer) return { isMyTurn: true, title: "Fund the order", detail: "Approve token if needed, then fund." };
-    return { isMyTurn: false, title: "Waiting for buyer funding", detail: "Buyer must fund the order." };
-  }
-
-  if (stage === ORDER_STAGE.Funded) {
     if (isSeller) return { isMyTurn: true, title: "Request advance", detail: "Seller submits AdvanceRequest hash." };
     return { isMyTurn: false, title: "Waiting for seller", detail: "Seller must request advance." };
   }
 
   if (stage === ORDER_STAGE.AdvanceRequested) {
-    if (isBuyer) return { isMyTurn: true, title: "Approve & pay advance", detail: "Buyer approves; the advance is paid to the seller automatically." };
-    return { isMyTurn: false, title: "Waiting for buyer", detail: "Buyer must approve & pay advance." };
+    if (isBuyer) return { isMyTurn: true, title: "Fund the advance", detail: "Buyer locks exactly the advance amount in escrow." };
+    return { isMyTurn: false, title: "Waiting for buyer", detail: "Buyer must fund the advance." };
+  }
+
+  if (stage === ORDER_STAGE.AdvanceFunded) {
+    if (isBuyer) return { isMyTurn: true, title: "Approve & release advance", detail: "Buyer approves; the escrowed advance is released to the seller." };
+    return { isMyTurn: false, title: "Waiting for buyer", detail: "Buyer must approve & release the advance." };
   }
 
   if (stage === ORDER_STAGE.InMilestones) {
@@ -188,6 +209,11 @@ function nextActionFromChain(o, milestones, me) {
     }
 
     if (ms === MS_STAGE.PlanApproved) {
+      if (isBuyer) return { isMyTurn: true, title: `Fund milestone (MS #${cur.idx})`, detail: "Buyer locks exactly this milestone's amount in escrow." };
+      return { isMyTurn: false, title: `Waiting for buyer funding (MS #${cur.idx})`, detail: "Buyer must fund this milestone." };
+    }
+
+    if (ms === MS_STAGE.Funded) {
       if (isSeller || isCarrier) return { isMyTurn: true, title: `Confirm delivery (MS #${cur.idx})`, detail: "Seller/Carrier submits delivery hash." };
       return { isMyTurn: false, title: `Waiting for delivery (MS #${cur.idx})`, detail: "Seller/Carrier must confirm delivery." };
     }
@@ -198,8 +224,8 @@ function nextActionFromChain(o, milestones, me) {
     }
 
     if (ms === MS_STAGE.InspectionApproved) {
-      if (isBuyer) return { isMyTurn: true, title: `Approve & pay milestone (MS #${cur.idx})`, detail: "Buyer approves; the milestone is paid to the seller automatically." };
-      return { isMyTurn: false, title: `Waiting for buyer (MS #${cur.idx})`, detail: "Buyer must approve & pay milestone." };
+      if (isBuyer) return { isMyTurn: true, title: `Approve & release payment (MS #${cur.idx})`, detail: "Buyer approves; the escrowed milestone amount is released to the seller." };
+      return { isMyTurn: false, title: `Waiting for buyer (MS #${cur.idx})`, detail: "Buyer must approve & release milestone payment." };
     }
 
     return { isMyTurn: false, title: `Waiting (MS #${cur.idx})`, detail: "—" };
@@ -258,13 +284,44 @@ function Btn({ kind = "primary", icon: Icon, children, onClick, disabled }) {
   );
 }
 
+/** File picker that uploads to IPFS (via the backend Pinata proxy) and hands
+ *  back the bytes32 digest + CID. Used to fill the on-chain doc hash fields. */
+function IpfsUploadButton({ token, disabled, onUploaded, onError }) {
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setBusy(true);
+    try {
+      const res = await uploadToIpfs(file, token);
+      onUploaded?.(res, file);
+    } catch (err) {
+      onError?.(err?.message || "IPFS upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <input ref={inputRef} type="file" style={{ display: "none" }} onChange={onPick} />
+      <Btn kind="ghost" icon={FileUp} disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
+        {busy ? "Uploading…" : "Upload file (IPFS)"}
+      </Btn>
+    </>
+  );
+}
+
 /* ---------------- Page ---------------- */
 export default function OrderDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const orderId = params?.orderId;
 
-  const { account, isCorrectChain, connect, switchToTargetChain, contracts } = useWeb3();
+  const { account, isCorrectChain, connect, switchToTargetChain, contracts, accessToken } = useWeb3();
 
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
@@ -278,9 +335,13 @@ export default function OrderDetailsPage() {
   const [balance, setBalance] = useState(null);
   const [allowance, setAllowance] = useState(null);
 
-  const [fundAmt, setFundAmt] = useState("");
   const [docHash, setDocHash] = useState("");
   const [reason, setReason] = useState("");
+
+  // On-chain documents (DocSubmitted events) + last IPFS upload info
+  const [docs, setDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [lastUpload, setLastUpload] = useState(null); // { cid, gatewayUrl, name }
 
   const [msIdx, setMsIdx] = useState(0);
   const [msHash, setMsHash] = useState("");
@@ -327,6 +388,16 @@ export default function OrderDetailsPage() {
         setOdl(null);
       }
 
+      let escrowed = 0n;
+      if (typeof contracts.sg.getOrderEscrow === "function") {
+        try {
+          const esc = await contracts.sg.getOrderEscrow(idBig);
+          escrowed = esc[0];
+        } catch {
+          escrowed = 0n;
+        }
+      }
+
       const orderObj = {
         orderId: String(orderId),
         stage: Number(stage),
@@ -335,6 +406,7 @@ export default function OrderDetailsPage() {
         advanceBps,
         advance,
         deposited,
+        escrowed,
         mLocked,
         mCount: Number(mCount),
         mPaidCount: Number(mPaidCount),
@@ -366,14 +438,12 @@ export default function OrderDetailsPage() {
       const alw = await tokenC.allowance(me, WEB3_CONFIG.sgAddress).catch(() => 0n);
       setAllowance(alw);
 
-      if (typeof contracts.sg.getMilestone !== "function") {
-        setMilestones([]);
-      } else {
-        const list = [];
+      let msList = [];
+      if (typeof contracts.sg.getMilestone === "function") {
         for (let i = 0; i < Number(mCount); i++) {
           try {
             const m = await contracts.sg.getMilestone(idBig, i);
-            list.push({
+            msList.push({
               idx: i,
               name: m[0],
               bps: m[1],
@@ -388,8 +458,8 @@ export default function OrderDetailsPage() {
             });
           } catch {}
         }
-        setMilestones(list);
       }
+      setMilestones(msList);
 
       setMsIdx((prev) => {
         const max = Math.max(Number(mCount) - 1, 0);
@@ -397,15 +467,75 @@ export default function OrderDetailsPage() {
         if (!Number.isFinite(v)) return 0;
         return Math.min(Math.max(v, 0), max);
       });
+
+      return { order: orderObj, milestones: msList };
     } catch (e) {
       setErr(e?.shortMessage || e?.message || "Failed to load order");
+      return null;
     } finally {
       setLoading(false);
     }
   }
 
+  // Best-effort SMS to whoever must act next after a stage change.
+  // We skip notifying yourself (you just acted) to avoid noise.
+  async function notifyNextActor(fresh) {
+    try {
+      if (!fresh?.order) return;
+      const next = nextActorNotification(fresh.order, fresh.milestones);
+      if (!next?.address) return;
+      if (/^0x0+$/i.test(next.address)) return; // unset role
+      if (me && addrEq(next.address, me)) return; // don't SMS yourself
+      await notifyOrderStage(
+        { walletAddress: next.address, orderstage: next.orderstage, orderId: fresh.order.orderId },
+        accessToken
+      );
+    } catch {}
+  }
+
+  // Scan DocSubmitted events for this order and resolve each hash to an IPFS link.
+  async function loadDocs() {
+    if (!contracts?.sg || !orderId) return;
+    setDocsLoading(true);
+    try {
+      const provider = contracts.sg.runner?.provider;
+      if (!provider) return;
+      const topics = await contracts.sg.filters.DocSubmitted(BigInt(orderId)).getTopicFilter();
+      const logs = await getLogsChunked(
+        provider,
+        { address: WEB3_CONFIG.sgAddress, topics },
+        WEB3_CONFIG.sgStartBlock,
+        "latest"
+      );
+      const parsed = [];
+      for (const log of logs) {
+        try {
+          const ev = contracts.sg.interface.parseLog(log);
+          parsed.push({
+            t: Number(ev.args.t),
+            idx: Number(ev.args.idx),
+            hash32: ev.args.hash32,
+            by: ev.args.by,
+            block: log.blockNumber,
+            txHash: log.transactionHash,
+            url: ipfsUrlFromBytes32(ev.args.hash32),
+          });
+        } catch {}
+      }
+      parsed.sort((a, b) => a.block - b.block);
+      setDocs(parsed);
+    } catch (e) {
+      console.error("loadDocs failed", e);
+    } finally {
+      setDocsLoading(false);
+    }
+  }
+
   useEffect(() => {
-    if (canRead) load();
+    if (canRead) {
+      load();
+      loadDocs();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRead, orderId]);
 
@@ -440,7 +570,9 @@ export default function OrderDetailsPage() {
     try {
       const tx = await fn();
       await tx.wait?.();
-      await load();
+      const fresh = await load();
+      loadDocs();
+      await notifyNextActor(fresh);
     } catch (e) {
       setErr(e?.shortMessage || e?.message || "Transaction failed");
     } finally {
@@ -448,51 +580,45 @@ export default function OrderDetailsPage() {
     }
   }
 
-  // ---------- Buyer fund: approve + fund ----------
-  const canApprove = useMemo(() => {
-    if (!o || !fundAmt) return false;
-    try {
-      const wei = ethers.parseUnits(String(fundAmt), tokenMeta.decimals ?? 18);
-      return (allowance ?? 0n) < wei;
-    } catch {
-      return false;
-    }
-  }, [o, fundAmt, tokenMeta.decimals, allowance]);
-
-  const canFund = useMemo(() => {
-    if (!o || !fundAmt) return false;
-    try {
-      const wei = ethers.parseUnits(String(fundAmt), tokenMeta.decimals ?? 18);
-      const hasBal = (balance ?? 0n) >= wei;
-      const hasAlw = (allowance ?? 0n) >= wei;
-      return hasBal && hasAlw;
-    } catch {
-      return false;
-    }
-  }, [o, fundAmt, tokenMeta.decimals, balance, allowance]);
-
-  async function doApproveForFund() {
-    if (!o) return;
+  // ---------- Staged escrow funding: approve exact amount if needed, then fund ----------
+  // Approves exactly `amountWei` to the contract when allowance is insufficient.
+  async function approveIfNeeded(amountWei) {
+    if ((allowance ?? 0n) >= amountWei) return;
     const signer = contracts.sg.runner;
     if (!signer) throw new Error("Signer not ready");
-
-    const wei = ethers.parseUnits(String(fundAmt), tokenMeta.decimals ?? 18);
     const tokenC = new ethers.Contract(o.token, TOKEN_ABI, signer);
-
-    await runTx("approve", () => tokenC.approve(WEB3_CONFIG.sgAddress, wei));
+    const tx = await tokenC.approve(WEB3_CONFIG.sgAddress, amountWei);
+    await tx.wait?.();
   }
 
-  async function doFund() {
-    if (!o) return;
-    const wei = ethers.parseUnits(String(fundAmt), tokenMeta.decimals ?? 18);
-    await runTx("fund", () => contracts.sg.fund(BigInt(o.orderId), wei));
+  // Runs an optional approve, then the fund tx, then reloads.
+  async function runFund(label, amountWei, fundFn) {
+    setErr("");
+    setBusy(label);
+    try {
+      if ((balance ?? 0n) < amountWei) throw new Error("Insufficient token balance for this stage.");
+      await approveIfNeeded(amountWei);
+      const tx = await fundFn();
+      await tx.wait?.();
+      const fresh = await load();
+      await notifyNextActor(fresh);
+    } catch (e) {
+      setErr(e?.shortMessage || e?.message || "Funding failed");
+    } finally {
+      setBusy("");
+    }
   }
 
-  // ---------- Advance flow ----------
+  // ---------- Advance flow (staged escrow) ----------
   async function doRequestAdvance() {
     const h = toBytes32OrNull(docHash);
     if (!h) return setErr("Doc hash is required (text is ok).");
     await runTx("requestAdvance", () => contracts.sg.requestAdvance(BigInt(o.orderId), h));
+  }
+
+  async function doFundAdvance() {
+    if (!o) return;
+    await runFund("fundAdvance", o.advance ?? 0n, () => contracts.sg.fundAdvance(BigInt(o.orderId)));
   }
 
   async function doApproveAdvance() {
@@ -529,6 +655,12 @@ export default function OrderDetailsPage() {
     await runTx("submitShipmentPlan", () => contracts.sg.submitShipmentPlan(BigInt(o.orderId), i, h));
   }
 
+  async function doFundMilestone() {
+    const i = ensureMsIdx();
+    const amount = milestones.find((m) => m.idx === i)?.amount ?? 0n;
+    await runFund("fundMilestone", amount, () => contracts.sg.fundMilestone(BigInt(o.orderId), i));
+  }
+
   async function doApprovePlan() {
     const i = ensureMsIdx();
     const { h } = getMilestoneHashNow();
@@ -561,13 +693,13 @@ export default function OrderDetailsPage() {
   // ✅ طبق درخواست شما: وقتی نوبت نیست، اکشن‌ها اصلاً نمایش داده نشه
   const showAnyActions = !!o && isMyTurn;
 
-  const showFund = showAnyActions && o?.stage === ORDER_STAGE.Created && isBuyer && !!o?.mLocked;
-  const showRequestAdvance = showAnyActions && o?.stage === ORDER_STAGE.Funded && isSeller;
-  const showApproveAdvance = showAnyActions && o?.stage === ORDER_STAGE.AdvanceRequested && isBuyer;
+  const showRequestAdvance = showAnyActions && o?.stage === ORDER_STAGE.Created && isSeller && !!o?.mLocked;
+  const showFundAdvance = showAnyActions && o?.stage === ORDER_STAGE.AdvanceRequested && isBuyer;
+  const showApproveAdvance = showAnyActions && o?.stage === ORDER_STAGE.AdvanceFunded && isBuyer;
 
   const showReject =
     showAnyActions &&
-    ((o?.stage === ORDER_STAGE.AdvanceRequested && isBuyer) ||
+    (((o?.stage === ORDER_STAGE.AdvanceRequested || o?.stage === ORDER_STAGE.AdvanceFunded) && isBuyer) ||
       (o?.stage === ORDER_STAGE.InMilestones && (isBuyer || isCarrier || isInspector)));
 
   const milestoneAction = useMemo(() => {
@@ -582,9 +714,10 @@ export default function OrderDetailsPage() {
 
     if (ms === MS_STAGE.NotStarted && (isSeller || isCarrier)) return { label: "Submit shipment plan", icon: FileUp, needsHash: true, fn: doSubmitPlan };
     if (ms === MS_STAGE.Planned && isBuyer) return { label: "Approve plan", icon: ShieldCheck, needsHash: true, fn: doApprovePlan };
-    if (ms === MS_STAGE.PlanApproved && (isSeller || isCarrier)) return { label: "Confirm delivery", icon: Send, needsHash: true, fn: doConfirmDelivery };
+    if (ms === MS_STAGE.PlanApproved && isBuyer) return { label: "Fund milestone", icon: Coins, needsHash: false, fn: doFundMilestone };
+    if (ms === MS_STAGE.Funded && (isSeller || isCarrier)) return { label: "Confirm delivery", icon: Send, needsHash: true, fn: doConfirmDelivery };
     if (ms === MS_STAGE.Delivered && isInspector) return { label: "Approve inspection", icon: ShieldCheck, needsHash: true, fn: doApproveInspection };
-    if (ms === MS_STAGE.InspectionApproved && isBuyer) return { label: "Approve & pay milestone", icon: Coins, needsHash: true, fn: doBuyerFinalApproval };
+    if (ms === MS_STAGE.InspectionApproved && isBuyer) return { label: "Approve & release payment", icon: Coins, needsHash: true, fn: doBuyerFinalApproval };
 
     return null;
   }, [o, selectedMs, showAnyActions, currentUnpaid, isSeller, isCarrier, isBuyer, isInspector]);
@@ -693,7 +826,8 @@ export default function OrderDetailsPage() {
                     <div className="kv"><div className="k">Token name</div><div className="v">{tokenMeta.name || "—"}</div></div>
                     <div className="kv"><div className="k">Decimals</div><div className="v">{String(tokenMeta.decimals)}</div></div>
                     <div className="kv"><div className="k">Price</div><div className="v">{fmtUnits(o.price, tokenMeta.decimals)} {tokenMeta.symbol}</div></div>
-                    <div className="kv"><div className="k">Deposited</div><div className="v">{fmtUnits(o.deposited, tokenMeta.decimals)} {tokenMeta.symbol}</div></div>
+                    <div className="kv"><div className="k">Deposited (total)</div><div className="v">{fmtUnits(o.deposited, tokenMeta.decimals)} {tokenMeta.symbol}</div></div>
+                    <div className="kv"><div className="k">In escrow now</div><div className="v">{fmtUnits(o.escrowed, tokenMeta.decimals)} {tokenMeta.symbol}</div></div>
                     <div className="kv"><div className="k">Advance</div><div className="v">{fmtUnits(o.advance, tokenMeta.decimals)} {tokenMeta.symbol} <span className="muted">({fmtBps(o.advanceBps)})</span></div></div>
                     <div className="kv"><div className="k">Milestones</div><div className="v">{paid}/{total} <span className="muted">({pct}%)</span></div></div>
                     {deadlineText ? <div className="kv"><div className="k">Advance approval deadline</div><div className="v">{deadlineText}</div></div> : null}
@@ -714,6 +848,45 @@ export default function OrderDetailsPage() {
                 </div>
               </div>
 
+              {/* Documents (on-chain DocSubmitted events + IPFS links) */}
+              <div className="actions" style={{ marginTop: 14 }}>
+                <div className="actionsHead">
+                  <div className="actionsTitle">Documents</div>
+                  <div className="actionsHint">
+                    {docsLoading ? "Loading documents…" : `${docs.length} document(s) anchored on-chain`}
+                  </div>
+                </div>
+
+                {docs.length === 0 && !docsLoading ? (
+                  <div className="miniText" style={{ padding: "4px 6px" }}>
+                    No documents submitted yet. Files uploaded via IPFS at each step will appear here.
+                  </div>
+                ) : null}
+
+                {docs.map((d, i) => (
+                  <div key={`${d.txHash}-${i}`} className="docRow">
+                    <div className="docInfo">
+                      <div className="docName">
+                        {docTypeLabel(d.t)}
+                        {d.idx !== 255 ? <span className="muted"> • Milestone #{d.idx}</span> : null}
+                      </div>
+                      <div className="miniText">
+                        by <span className="monoInline">{shortAddr(d.by)}</span> • block {d.block}
+                      </div>
+                    </div>
+                    <div className="docActions">
+                      {d.url ? (
+                        <a className="btn2 btn2--ghost" href={d.url} target="_blank" rel="noreferrer">
+                          View on IPFS
+                        </a>
+                      ) : (
+                        <span className="miniText">no file</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* ✅ Actions فقط وقتی Your turn است */}
               {showAnyActions ? (
                 <div className="actions">
@@ -722,31 +895,25 @@ export default function OrderDetailsPage() {
                     <div className="actionsHint">Only the correct role at the correct stage can submit.</div>
                   </div>
 
-                  {/* Buyer: Fund */}
-                  {showFund ? (
+                  {/* Buyer: Fund advance (staged escrow) */}
+                  {showFundAdvance ? (
                     <div className="actionRow">
                       <div className="actionInfo">
-                        <div className="actionName">Fund order</div>
+                        <div className="actionName">Fund advance</div>
                         <div className="actionDesc">
-                          Buyer must <span className="monoInline">approve</span> token (if needed) then call{" "}
-                          <span className="monoInline">fund</span>.
+                          Locks exactly the advance amount in escrow. Token{" "}
+                          <span className="monoInline">approve</span> happens automatically if needed.
                         </div>
                       </div>
 
                       <div className="actionControls">
-                        <Field label={`Amount (${tokenMeta.symbol || "TOKEN"})`}>
-                          <input className="input" value={fundAmt} onChange={(e) => setFundAmt(e.target.value)} placeholder="e.g. 100" />
+                        <Field label="Advance amount">
+                          <input className="input" value={`${fmtUnits(o.advance, tokenMeta.decimals)} ${tokenMeta.symbol}`} readOnly />
                         </Field>
 
-                        <div className="btnRow">
-                          <Btn kind="ghost" icon={ShieldCheck} disabled={!canApprove || !!busy} onClick={doApproveForFund}>
-                            {busy === "approve" ? "Approving…" : "Approve"}
-                          </Btn>
-
-                          <Btn kind="primary" icon={Coins} disabled={!canFund || !!busy} onClick={doFund}>
-                            {busy === "fund" ? "Funding…" : "Fund"}
-                          </Btn>
-                        </div>
+                        <Btn kind="primary" icon={Coins} disabled={!!busy} onClick={doFundAdvance}>
+                          {busy === "fundAdvance" ? "Funding…" : "Fund advance"}
+                        </Btn>
                       </div>
                     </div>
                   ) : null}
@@ -762,27 +929,53 @@ export default function OrderDetailsPage() {
                         <Field label="Doc hash (bytes32 یا text)">
                           <input className="input mono" value={docHash} onChange={(e) => setDocHash(e.target.value)} placeholder="0x…32bytes OR any text" />
                         </Field>
-                        <Btn kind="primary" icon={FileUp} disabled={!String(docHash).trim() || !!busy} onClick={doRequestAdvance}>
-                          {busy === "requestAdvance" ? "Submitting…" : "Request advance"}
-                        </Btn>
+                        <div className="btnRow">
+                          <IpfsUploadButton
+                            token={accessToken}
+                            disabled={!!busy}
+                            onUploaded={(res, file) => { setDocHash(res.hash32); setLastUpload({ ...res, name: file.name }); setErr(""); }}
+                            onError={(m) => setErr(m)}
+                          />
+                          <Btn kind="primary" icon={FileUp} disabled={!String(docHash).trim() || !!busy} onClick={doRequestAdvance}>
+                            {busy === "requestAdvance" ? "Submitting…" : "Request advance"}
+                          </Btn>
+                        </div>
+                        {lastUpload ? (
+                          <div className="miniText">
+                            Uploaded <b>{lastUpload.name}</b> → <a href={lastUpload.gatewayUrl} target="_blank" rel="noreferrer" className="monoInline">{lastUpload.cid}</a>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
 
-                  {/* Buyer: Approve & pay advance */}
+                  {/* Buyer: Approve & release advance */}
                   {showApproveAdvance ? (
                     <div className="actionRow">
                       <div className="actionInfo">
-                        <div className="actionName">Approve &amp; pay advance</div>
-                        <div className="actionDesc">Buyer approves with a doc hash; the advance is paid to the seller automatically.</div>
+                        <div className="actionName">Approve &amp; release advance</div>
+                        <div className="actionDesc">Buyer approves with a doc hash; the escrowed advance is released to the seller.</div>
                       </div>
                       <div className="actionControls">
                         <Field label="Doc hash (bytes32 یا text)">
                           <input className="input mono" value={docHash} onChange={(e) => setDocHash(e.target.value)} placeholder="0x…32bytes OR any text" />
                         </Field>
-                        <Btn kind="primary" icon={Coins} disabled={!String(docHash).trim() || !!busy} onClick={doApproveAdvance}>
-                          {busy === "approveAdvance" ? "Approving…" : "Approve & pay"}
-                        </Btn>
+                        <div className="btnRow">
+                          <IpfsUploadButton
+                            token={accessToken}
+                            disabled={!!busy}
+                            onUploaded={(res, file) => { setDocHash(res.hash32); setLastUpload({ ...res, name: file.name }); setErr(""); }}
+                            onError={(m) => setErr(m)}
+                          />
+                          <Btn kind="primary" icon={Coins} disabled={!String(docHash).trim() || !!busy} onClick={doApproveAdvance}>
+                            {busy === "approveAdvance" ? "Releasing…" : "Approve & release"}
+                          </Btn>
+                        </div>
+                        {lastUpload ? (
+                          <div className="miniText">
+                            Uploaded <b>{lastUpload.name}</b> → <a href={lastUpload.gatewayUrl} target="_blank" rel="noreferrer" className="monoInline">{lastUpload.cid}</a>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -843,6 +1036,22 @@ export default function OrderDetailsPage() {
                             placeholder="0x…32bytes OR any text"
                           />
                         </Field>
+
+                        {milestoneAction?.needsHash ? (
+                          <div className="btnRow">
+                            <IpfsUploadButton
+                              token={accessToken}
+                              disabled={!!busy}
+                              onUploaded={(res, file) => { setMsHash(res.hash32); setLastUpload({ ...res, name: file.name }); setErr(""); }}
+                              onError={(m) => setErr(m)}
+                            />
+                            {lastUpload ? (
+                              <span className="miniText">
+                                Uploaded <b>{lastUpload.name}</b> → <a href={lastUpload.gatewayUrl} target="_blank" rel="noreferrer" className="monoInline">{lastUpload.cid}</a>
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
 
                         <div className="btnRow">
                           {milestoneAction ? (
@@ -1003,6 +1212,16 @@ export default function OrderDetailsPage() {
         .btn2--disabled, .btn2:disabled { opacity: 0.6; pointer-events: none; }
 
         .iconBtn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 14px; border: 1px solid rgba(15,23,42,0.10); background: rgba(255,255,255,0.85); cursor: pointer; }
+
+        .docRow {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          padding: 10px 12px; border-radius: 14px;
+          border: 1px solid rgba(148,163,184,0.35); background: rgba(255,255,255,0.80);
+        }
+        .docInfo { display: grid; gap: 4px; min-width: 0; }
+        .docName { font-size: 13px; font-weight: 1000; color: #0f172a; }
+        .docActions { flex-shrink: 0; }
+        .docActions a { text-decoration: none; }
 
         .mini { display: flex; align-items: center; gap: 8px; }
         .miniDot { width: 7px; height: 7px; border-radius: 999px; background: rgba(15,23,42,0.9); box-shadow: 0 0 0 3px rgba(15,23,42,0.08); }

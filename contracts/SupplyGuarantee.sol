@@ -50,12 +50,15 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     using SafeERC20Lite for IERC20;
 
 
-    // Bank & Arbiter roles removed. Buyer approval pays automatically.
-    // Disputes/cancellation are handled by the contract owner (admin).
-    enum OrderStage { Created, Funded, AdvanceRequested, InMilestones, Finalized, Disputed, Cancelled }
+    // Staged escrow model: the buyer never deposits the full price upfront.
+    // At each stage the buyer locks exactly that stage's amount, the work
+    // happens, and the locked amount is then released to the seller.
+    // Bank & Arbiter roles removed; disputes/cancellation are owner-only.
+    enum OrderStage { Created, AdvanceRequested, AdvanceFunded, InMilestones, Finalized, Disputed, Cancelled }
 
-    // Buyer's final approval pays the milestone in the same tx (no separate Bank step).
-    enum MilestoneStage { NotStarted, Planned, PlanApproved, Delivered, InspectionApproved, Paid }
+    // NotStarted -> Planned -> PlanApproved -> Funded (buyer locked the amount)
+    // -> Delivered -> InspectionApproved -> Paid (released to seller).
+    enum MilestoneStage { NotStarted, Planned, PlanApproved, Funded, Delivered, InspectionApproved, Paid }
 
 
     enum DocType {
@@ -71,6 +74,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         bytes32 name;
         uint16  bps;
         uint256 amount;
+        bool    funded;
         MilestoneStage stage;
         MilestoneDeadlines dl;
 
@@ -89,11 +93,13 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         uint256 price;
         uint16  advanceBps;
         uint256 advance;
-        uint256 deposited;
+        uint256 deposited;   // cumulative amount the buyer has locked over the lifetime
+        uint256 escrowed;    // amount currently locked in the contract (not yet released)
         //Settings
         OrderStage stage;
         bool exists;
         bool mLocked;
+        bool advanceFunded;
         bool advancePaid;
         OrderDeadlines odl;
         //Milestones
@@ -101,7 +107,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         uint8  mPaidCount;
         uint16 mTotalBps;
         mapping(uint8 => Milestone) milestones;
-        //Documents pre Pay
+        //Documents
         DocSlot advReq;
         DocSlot advApprove;
     }
@@ -166,8 +172,9 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         o.buyer=buyer; o.seller=seller; o.carrier=carrier; o.inspector=inspector;
         o.token=token; o.price=price; o.advanceBps=advanceBps;
         o.advance = (price*advanceBps)/10_000;
-        o.deposited=0;
-        o.stage=OrderStage.Created; o.exists=true; o.mLocked=false; o.advancePaid=false; o.odl=odl;
+        o.deposited=0; o.escrowed=0;
+        o.stage=OrderStage.Created; o.exists=true; o.mLocked=false;
+        o.advanceFunded=false; o.advancePaid=false; o.odl=odl;
         emit OrderCreated(id, buyer, seller, token, price, advanceBps);
         emit OrderStageChanged(id, OrderStage.Created, OrderStage.Created);
     }
@@ -182,7 +189,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         uint8 idx = o.mCount; o.mCount = idx+1; o.mTotalBps += bps;
 
         Milestone storage m = o.milestones[idx];
-        m.name=name; m.bps=bps; m.amount=0; m.stage=MilestoneStage.NotStarted; m.dl=dl;
+        m.name=name; m.bps=bps; m.amount=0; m.funded=false; m.stage=MilestoneStage.NotStarted; m.dl=dl;
         emit MilestoneAdded(id, idx, name, bps, dl.planBy, dl.deliveryBy, dl.inspectionBy, dl.buyerApprovalBy);
     }
 
@@ -194,44 +201,48 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         for(uint8 i=0;i<o.mCount;i++){ o.milestones[i].amount = (o.price * o.milestones[i].bps)/10_000; }
         o.mLocked = true;
         emit MilestonesLocked(id, o.mTotalBps, o.advance);
+        // No advance configured => jump straight into the milestone flow.
+        if (o.advance == 0) _setOrderStage(id, OrderStage.InMilestones);
     }
 
-    /*####Funding#### */
-    function fund(uint256 id, uint256 amt) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
-        Order storage o = orders[id];
-        require(o.mLocked, "lock milestones first");
-        require(amt>0, "amount=0");
-        IERC20(o.token).safeTransferFrom(msg.sender, address(this), amt);
-        o.deposited += amt;
-        emit Funded(id, msg.sender, amt, o.deposited);
-        if (o.stage==OrderStage.Created && o.deposited>=o.price) _setOrderStage(id, OrderStage.Funded);
-    }
-
-    /* #####Advance####*/
+    /* #####Advance (staged escrow)#### */
     function requestAdvance(uint256 id, bytes32 h) external whenNotPaused orderExists(id) onlySeller(id) {
         Order storage o = orders[id];
-        require(o.stage==OrderStage.Funded, "bad stage");
-        require(o.deposited>=o.price, "not fully funded");
+        require(o.stage==OrderStage.Created && o.mLocked, "bad stage");
+        require(o.advance>0, "no advance");
         o.advReq = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.AdvanceRequest, 255, h, msg.sender);
         _setOrderStage(id, OrderStage.AdvanceRequested);
     }
 
-    // Buyer approves AND pays the advance in one step (Bank role removed).
-    function approveAdvance(uint256 id, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
+    // Buyer locks exactly the advance amount into escrow.
+    function fundAdvance(uint256 id) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.AdvanceRequested, "bad stage");
+        IERC20(o.token).safeTransferFrom(msg.sender, address(this), o.advance);
+        o.deposited += o.advance;
+        o.escrowed  += o.advance;
+        o.advanceFunded = true;
+        emit Funded(id, msg.sender, o.advance, o.deposited);
+        _setOrderStage(id, OrderStage.AdvanceFunded);
+    }
+
+    // Buyer approves and releases the escrowed advance to the seller.
+    function approveAdvance(uint256 id, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
+        Order storage o = orders[id];
+        require(o.stage==OrderStage.AdvanceFunded, "bad stage");
         if (o.odl.advanceApprovalBy!=0) require(block.timestamp<=o.odl.advanceApprovalBy, "deadline");
         o.advApprove = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.AdvanceApproval, 255, h, msg.sender);
 
         o.advancePaid = true;
+        o.escrowed -= o.advance;
         if (o.advance > 0) IERC20(o.token).safeTransfer(o.seller, o.advance);
         emit PaidAdvance(id, o.seller, o.advance, msg.sender);
         _setOrderStage(id, OrderStage.InMilestones);
     }
 
-    /*###### Milestones#### */
+    /*###### Milestones (staged escrow)#### */
     function submitShipmentPlan(uint256 id, uint8 idx, bytes32 h) external whenNotPaused orderExists(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.InMilestones, "order not in milestones");
@@ -257,13 +268,28 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         _setMilestoneStage(id, idx, MilestoneStage.PlanApproved);
     }
 
+    // Buyer locks exactly this milestone's amount into escrow before delivery.
+    function fundMilestone(uint256 id, uint8 idx) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
+        Order storage o = orders[id];
+        require(o.stage==OrderStage.InMilestones,"order not in milestones");
+        require(idx<o.mCount,"bad idx");
+        Milestone storage m = o.milestones[idx];
+        require(m.stage==MilestoneStage.PlanApproved,"wrong ms stage");
+        IERC20(o.token).safeTransferFrom(msg.sender, address(this), m.amount);
+        o.deposited += m.amount;
+        o.escrowed  += m.amount;
+        m.funded = true;
+        emit Funded(id, msg.sender, m.amount, o.deposited);
+        _setMilestoneStage(id, idx, MilestoneStage.Funded);
+    }
+
     function confirmDelivery(uint256 id, uint8 idx, bytes32 h) external whenNotPaused orderExists(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.InMilestones,"order not in milestones");
         require(idx<o.mCount,"bad idx");
         require(msg.sender==o.seller || msg.sender==o.carrier, "not seller/carrier");
         Milestone storage m = o.milestones[idx];
-        require(m.stage==MilestoneStage.PlanApproved, "wrong ms stage");
+        require(m.stage==MilestoneStage.Funded, "wrong ms stage");
         if (m.dl.deliveryBy!=0) require(block.timestamp<=m.dl.deliveryBy,"delivery dl");
         m.delivery = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.M_Delivery, idx, h, msg.sender);
@@ -282,7 +308,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         _setMilestoneStage(id, idx, MilestoneStage.InspectionApproved);
     }
 
-    // Buyer's final approval pays the milestone in the same tx (Bank role removed).
+    // Buyer's final approval releases the escrowed milestone amount to the seller.
     function approveMilestonePayment(uint256 id, uint8 idx, bytes32 h) external nonReentrant whenNotPaused orderExists(id) onlyBuyer(id) {
         Order storage o = orders[id];
         require(o.stage==OrderStage.InMilestones,"order not in milestones");
@@ -293,6 +319,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         m.buyerApproval = DocSlot(h,_now(),msg.sender);
         emit DocSubmitted(id, DocType.M_BuyerFinalApproval, idx, h, msg.sender);
 
+        o.escrowed -= m.amount;
         IERC20(o.token).safeTransfer(o.seller, m.amount);
         emit PaidMilestone(id, idx, o.seller, m.amount, msg.sender);
         _setMilestoneStage(id, idx, MilestoneStage.Paid);
@@ -303,7 +330,7 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
 
     function rejectCurrent(uint256 id, string calldata reason) external whenNotPaused orderExists(id) {
         Order storage o = orders[id];
-        if (o.stage==OrderStage.AdvanceRequested)        require(msg.sender==o.buyer,"buyer only");
+        if (o.stage==OrderStage.AdvanceRequested || o.stage==OrderStage.AdvanceFunded) require(msg.sender==o.buyer,"buyer only");
         else if (o.stage==OrderStage.InMilestones)       require(msg.sender==o.buyer || msg.sender==o.carrier || msg.sender==o.inspector, "not allowed");
         else revert("reject not allowed");
         emit Rejected(id, reason, msg.sender);
@@ -323,21 +350,17 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
         emit Cancelled(id, note, msg.sender);
     }
 
+    // Refund whatever is still locked in escrow (funded but not yet released) to the buyer.
     function _refund(uint256 id) internal nonReentrant {
         Order storage o = orders[id];
-        IERC20 t = IERC20(o.token);
-        uint256 paid = 0;
-        if (o.advancePaid) paid += o.advance;
-        for (uint8 i=0;i<o.mCount;i++){
-            if (o.milestones[i].stage==MilestoneStage.Paid) paid += o.milestones[i].amount;
-        }
-        uint256 refundable = o.deposited>paid ? (o.deposited-paid) : 0;
+        uint256 refundable = o.escrowed;
         if (refundable>0){
+            IERC20 t = IERC20(o.token);
             uint256 bal = t.balanceOf(address(this));
             uint256 amt = bal<refundable ? bal : refundable;
             if (amt>0){
+                o.escrowed -= amt;
                 t.safeTransfer(o.buyer, amt);
-                o.deposited -= amt;
                 emit Refunded(id, o.buyer, amt);
             }
         }
@@ -350,6 +373,9 @@ contract SupplyGuarantee is PausableLite, ReentrancyGuardLite {
     }
     function getOrderMoney(uint256 id) external view orderExists(id) returns(address token,uint256 price,uint16 advanceBps,uint256 advance,uint256 deposited,bool mLocked,uint8 mCount,uint8 mPaidCount,uint16 mTotalBps){
         Order storage o = orders[id]; return (o.token,o.price,o.advanceBps,o.advance,o.deposited,o.mLocked,o.mCount,o.mPaidCount,o.mTotalBps);
+    }
+    function getOrderEscrow(uint256 id) external view orderExists(id) returns(uint256 escrowed, bool advanceFunded, bool advancePaid){
+        Order storage o = orders[id]; return (o.escrowed, o.advanceFunded, o.advancePaid);
     }
     function getOrderDeadline(uint256 id) external view orderExists(id) returns(OrderDeadlines memory){ return orders[id].odl; }
     function getMilestone(uint256 id, uint8 idx) external view orderExists(id) returns(

@@ -179,6 +179,24 @@ export default function AppDashboardPage() {
           const rolesFromGraph = row.roles || [];
           const rolesFinal = uniq([...rolesFromGraph, ...rolesFromChain]);
 
+          // For orders in the milestone phase, find the current (first unpaid)
+          // milestone so "your turn / waiting" can be computed correctly.
+          let nextMsIdx = null;
+          let nextMsStage = null;
+          const MS_PAID = 6; // MilestoneStage.Paid
+          if (Number(stage) === 3 && typeof contracts.sg.getMilestone === "function") {
+            for (let i = 0; i < Number(mCount); i++) {
+              try {
+                const m = await contracts.sg.getMilestone(orderIdBig, i);
+                if (Number(m[3]) !== MS_PAID) {
+                  nextMsIdx = i;
+                  nextMsStage = Number(m[3]);
+                  break;
+                }
+              } catch {}
+            }
+          }
+
           out.push({
             orderId: id,
             sgAddress: WEB3_CONFIG.sgAddress,
@@ -194,6 +212,9 @@ export default function AppDashboardPage() {
             mCount,
             mPaidCount,
             mTotalBps,
+
+            nextMsIdx,
+            nextMsStage,
 
             buyer,
             seller,

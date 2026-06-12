@@ -10,9 +10,9 @@ dataSources:
     name: SupplyGuarantee
     network: sepolia
     source:
-      address: "0xfDCfA5454053db2Fc94D7568bE6e8854a3Cd8C28"
+      address: "0xAA187d38D0226e1A4869ca596Fe43DcF3CaeE7D2"
       abi: SupplyGuarantee
-      startBlock: 10200000
+      startBlock: 11038536
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
