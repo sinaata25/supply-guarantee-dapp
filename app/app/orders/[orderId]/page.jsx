@@ -337,6 +337,7 @@ export default function OrderDetailsPage() {
 
   const [docHash, setDocHash] = useState("");
   const [reason, setReason] = useState("");
+  const [smsNote, setSmsNote] = useState(""); // visible result of the next-actor SMS
 
   // On-chain documents (DocSubmitted events) + last IPFS upload info
   const [docs, setDocs] = useState([]);
@@ -479,18 +480,39 @@ export default function OrderDetailsPage() {
 
   // Best-effort SMS to whoever must act next after a stage change.
   // We skip notifying yourself (you just acted) to avoid noise.
+  // The outcome is surfaced via smsNote so failures aren't silent.
   async function notifyNextActor(fresh) {
     try {
       if (!fresh?.order) return;
       const next = nextActorNotification(fresh.order, fresh.milestones);
-      if (!next?.address) return;
-      if (/^0x0+$/i.test(next.address)) return; // unset role
-      if (me && addrEq(next.address, me)) return; // don't SMS yourself
-      await notifyOrderStage(
+      if (!next?.address || /^0x0+$/i.test(next.address)) {
+        setSmsNote("");
+        return; // no next actor (finalized/disputed/unset role)
+      }
+      if (me && addrEq(next.address, me)) {
+        setSmsNote("Next step is yours too — no SMS sent.");
+        return;
+      }
+      if (!accessToken) {
+        setSmsNote("⚠️ SMS not sent: log in (Login button) so the app can notify the next party.");
+        return;
+      }
+      const res = await notifyOrderStage(
         { walletAddress: next.address, orderstage: next.orderstage, orderId: fresh.order.orderId },
         accessToken
       );
-    } catch {}
+      if (res?.sent) {
+        setSmsNote(`📱 SMS sent to the next party (${shortAddr(next.address)}): «${next.orderstage}»`);
+      } else if (res?.reason === "no phone") {
+        setSmsNote(`Next party (${shortAddr(next.address)}) has no phone number on file — no SMS sent.`);
+      } else if (res?.reason === "no profile") {
+        setSmsNote(`Next party (${shortAddr(next.address)}) hasn't created a profile — no SMS sent.`);
+      } else {
+        setSmsNote(`SMS provider error — could not notify the next party. (${typeof res?.reason === "string" ? res.reason : "try again"})`);
+      }
+    } catch {
+      setSmsNote("Could not reach the notification service.");
+    }
   }
 
   // Scan DocSubmitted events for this order and resolve each hash to an IPFS link.
@@ -784,6 +806,7 @@ export default function OrderDetailsPage() {
               </div>
               <div className="turnMain">{nextStep.title}</div>
               <div className="turnDetail">{nextStep.detail}</div>
+              {smsNote ? <div className="turnDetail" style={{ marginTop: 8, color: "#0f766e" }}>{smsNote}</div> : null}
             </div>
           ) : null}
 

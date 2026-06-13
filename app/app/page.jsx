@@ -135,29 +135,29 @@ export default function AppDashboardPage() {
       if (!account) throw new Error("Connect wallet first.");
       if (!isCorrectChain) throw new Error("Switch to target network.");
       if (!contracts?.sg) throw new Error("Web3 not ready.");
-      if (!GRAPH_URL) throw new Error("Missing NEXT_PUBLIC_GRAPH_URL in .env.local");
 
       setStatus("Loading orders…");
 
       const me = ethers.getAddress(account);
-      const base = await graphFetchMyOrders(me);
 
-      if (base.length === 0) {
-        setOrders([]);
-        setStatus("No orders found for this wallet.");
-        return;
-      }
-
+      // Enumerate every order on-chain (the source of truth) instead of relying
+      // on the subgraph, so ANY role in ANY order always shows up — even if the
+      // subgraph is behind, unsynced, or pointed at an old contract.
+      const nextId = Number(await contracts.sg.nextOrderId());
       const out = [];
 
-      for (const row of base) {
-        const id = row.orderId;
+      for (let idNum = 1; idNum < nextId; idNum++) {
+        const id = String(idNum);
 
         try {
-          const orderIdBig = BigInt(id);
+          const orderIdBig = BigInt(idNum);
 
           const [buyer, seller, carrier, inspector] =
             await contracts.sg.getOrderParties(orderIdBig);
+
+          const parties = { buyer, seller, carrier, inspector };
+          const rolesFinal = detectRolesFromParties(parties, me);
+          if (rolesFinal.length === 0) continue; // not a participant — skip
 
           const stage = await contracts.sg.orderStageOf(orderIdBig);
 
@@ -172,12 +172,6 @@ export default function AppDashboardPage() {
             mPaidCount,
             mTotalBps,
           ] = await contracts.sg.getOrderMoney(orderIdBig);
-
-          const parties = { buyer, seller, carrier, inspector };
-
-          const rolesFromChain = detectRolesFromParties(parties, me);
-          const rolesFromGraph = row.roles || [];
-          const rolesFinal = uniq([...rolesFromGraph, ...rolesFromChain]);
 
           // For orders in the milestone phase, find the current (first unpaid)
           // milestone so "your turn / waiting" can be computed correctly.
