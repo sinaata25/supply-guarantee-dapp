@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 _MAX_ATTEMPTS = 3
 _RETRY_BACKOFF_SECONDS = 1.5
 
+# IPPanel is a domestic (Iranian) provider — reach it directly and ignore any
+# system VPN/SOCKS proxy env vars (which would otherwise route domestic SMS
+# through a foreign proxy and also require PySocks).
+_session = requests.Session()
+_session.trust_env = False
+
 
 def normalize_iran_msisdn(raw: str):
     """Normalize an Iranian mobile number to +98XXXXXXXXXX.
@@ -67,7 +73,7 @@ def send_pattern_sms(*, to: str, params: dict) -> dict:
     last_detail = "unknown error"
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
-            resp = requests.post(
+            resp = _session.post(
                 settings.IPPANEL_BASE_URL, json=payload, headers=headers, timeout=15
             )
         except requests.RequestException as e:
